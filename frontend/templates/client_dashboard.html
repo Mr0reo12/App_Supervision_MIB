@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+
+{% block title %}Asset status for {{ client }}{% endblock %}
+{% block header %}Asset status for {{ client }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6">
+
+  <h3 class="text-xl font-semibold mb-4">
+    Assets in KO/Warning state for {{ client }}
+  </h3>
+
+  <div class="overflow-x-auto">
+    <table class="min-w-full table-auto text-sm border rounded-lg overflow-hidden">
+      <thead class="bg-gray-100 text-gray-700">
+        <tr>
+          <th class="px-4 py-2 text-left">VM</th>
+          <th class="px-4 py-2 text-left">Object Class</th>
+          <th class="px-4 py-2 text-left">Parameter</th>
+          <th class="px-4 py-2 text-left">Object</th>
+          <th class="px-4 py-2 text-left">Status</th>
+          <th class="px-4 py-2 text-left">Severity</th>
+          <th class="px-4 py-2 text-left">Last Change</th>
+          <th class="px-4 py-2 text-left">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if rows %}
+          {% for row in rows %}
+          <tr class="border-t">
+            <td class="px-4 py-2">
+              <a href="/machine/{{ row.vm | urlencode }}"
+                 class="text-orange-600 hover:underline">
+                {{ row.vm }}
+              </a>
+            </td>
+            <td class="px-4 py-2">{{ row.objectClass }}</td>
+            <td class="px-4 py-2">{{ row.parameter }}</td>
+            <td class="px-4 py-2">{{ row.object }}</td>
+            <td class="px-4 py-2">
+              <span
+                class="inline-block px-3 py-0.5 rounded-full text-xs font-semibold
+                       {{ 'bg-red-100 text-red-700' if row.status.lower() in ['critical','ko'] 
+                          else 'bg-yellow-100 text-yellow-800' }}">
+                {{ row.status }}
+              </span>
+            </td>
+            <td class="px-4 py-2">{{ row.severity }}</td>
+            <td class="px-4 py-2">{{ row.lastChange }}</td>
+            <td class="px-4 py-2">{{ row.description }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" class="px-4 py-6 text-center text-green-700">
+              🎉 No hay checks KO/Warning para este cliente.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-6 text-center">
+    <button
+      onclick="history.back()"
+      class="bg-orange-500 hover:bg-orange-600 text-white font-bold
+             py-2 px-6 rounded-lg shadow">
+      Back
+    </button>
+  </div>
+
+</div>
+{% endblock %}

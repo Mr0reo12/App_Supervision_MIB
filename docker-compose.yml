@@ -1,0 +1,64 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  loki:
+    image: grafana/loki:2.9.1
+    container_name: loki
+    ports:
+      - "3100:3100"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+
+  promtail:
+    image: grafana/promtail:2.9.1
+    container_name: promtail
+    volumes:
+      - /var/log:/var/log                # Asegúrate de usar logs válidos
+      - ./promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+
+  backend:
+    build:
+      context: ./backend
+    container_name: app_supervision_mib_backend
+    volumes:
+      - ./backend/token.txt:/app/token.txt
+    ports:
+      - "5001:5001"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+
+  gateway:
+    build:
+      context: ./api-gateway
+    container_name: app_supervision_mib_gateway
+    ports:
+      - "5000:5000"
+    depends_on:
+      - backend
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: app_supervision_mib_frontend
+    ports:
+      - "5002:5002"
+    depends_on:
+      - gateway
