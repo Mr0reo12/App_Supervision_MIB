@@ -1,5 +1,6 @@
-name: CI   # lint + build
+# .github/workflows/ci.yml  (only the lint-Dockerfiles job rewritten)
 
+name: CI   # lint + build
 on:
   push:
     branches: [main]
@@ -7,55 +8,60 @@ on:
     branches: [main]
 
 jobs:
-  lint:
+  # ────────────────────────── LINT ──────────────────────────
+  lint-dockerfiles:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        file:
+          - api-gateway/Dockerfile
+          - backend/Dockerfile
+          - frontend/Dockerfile   # ← add more if you create new services
     steps:
       - uses: actions/checkout@v4
 
-      - name: Lint Dockerfiles
+      - name: Hadolint ${{ matrix.file }}
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: .
-          recursive: true      # ← key fix
+          dockerfile: ${{ matrix.file }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+  lint-python:
+    runs-on: ubuntu-latest
+    needs: lint-dockerfiles
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
+      - run: pip install ruff==0.4.*
+      - run: ruff .
 
-      - name: Install ruff
-        run: pip install ruff==0.4.*
-
-      - name: Run ruff
-        run: ruff .
-
+  # ────────────────────────── BUILD ─────────────────────────
   build-images:
-    needs: lint
+    needs: [lint-dockerfiles, lint-python]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Build gateway image
+      - name: Build gateway
         uses: docker/build-push-action@v5
         with:
           context: ./api-gateway
           tags: mib-gateway:ci
           push: false
 
-      - name: Build backend image
+      - name: Build backend
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           tags: mib-backend:ci
           push: false
 
-      - name: Build frontend image
+      - name: Build frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           tags: mib-frontend:ci
           push: false
-
