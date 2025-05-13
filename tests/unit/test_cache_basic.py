@@ -1,4 +1,3 @@
-import time
 from backend.app import InMemoryTTLCache
 
 def test_basic_set_get():

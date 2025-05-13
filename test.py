@@ -1,5 +1,4 @@
 import requests
-import time
 
 # --- Configuration de l'API ---
 LOGIN_URL = "https://57.203.253.112:443/api/auth/login"
