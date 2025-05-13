@@ -13,7 +13,6 @@
 from __future__ import annotations
 from typing import List, Dict, Any, Optional
 import asyncio, os, time, json, logging
-
 import httpx, redis
 from fastapi import FastAPI, HTTPException, Query
 from pathlib import Path
@@ -23,7 +22,7 @@ from dotenv import load_dotenv
 # Variables d’environnement (.env à la racine)
 # ─────────────────────────────────────────────────────────────────────────────
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-from token_manager import token_mgr
+from .token_manager import token_mgr
 
 # ════════════════════════════════════════════════════════════════════════════
 # Configuration
