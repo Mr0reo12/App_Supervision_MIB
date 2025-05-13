@@ -21,7 +21,7 @@ jobs:
           dockerfile: |
             api-gateway/Dockerfile
             backend/Dockerfile
-            frontend/Dockerfile    # ← quitamos la ruta “docker/…”
+            frontend/Dockerfile  
 
       # Python-lint (ruff)
       - name: Set up Python
@@ -38,7 +38,7 @@ jobs:
 
   # ────────────────────────── BUILD ─────────────────────────
   build-images:
-    needs: lint                  # solo si lint fue OK
+    needs: lint                 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +50,7 @@ jobs:
         with:
           context: ./api-gateway
           tags: mib-gateway:ci
-          push: false            # ⬅️ solo compila
+          push: false         
 
       - name: Build backend image
         uses: docker/build-push-action@v5
