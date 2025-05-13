@@ -1,6 +1,5 @@
-# .github/workflows/ci.yml  (only the lint-Dockerfiles job rewritten)
-
 name: CI   # lint + build
+
 on:
   push:
     branches: [main]
@@ -16,7 +15,7 @@ jobs:
         file:
           - api-gateway/Dockerfile
           - backend/Dockerfile
-          - frontend/Dockerfile   # ← add more if you create new services
+          - frontend/Dockerfile     # add more paths if you create new services
     steps:
       - uses: actions/checkout@v4
 
