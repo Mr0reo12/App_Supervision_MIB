@@ -1,4 +1,3 @@
-# .github/workflows/ci.yml
 name: CI   # lint + build
 
 on:
@@ -6,24 +5,19 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-    
+
 jobs:
-  # ────────────────────────── LINT ──────────────────────────
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Dockerfile-lint (hadolint)
       - name: Lint Dockerfiles
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: |
-            api-gateway/Dockerfile
-            backend/Dockerfile
-            frontend/Dockerfile  
+          dockerfile: .
+          recursive: true      # ← key fix
 
-      # Python-lint (ruff)
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -36,9 +30,8 @@ jobs:
       - name: Run ruff
         run: ruff .
 
-  # ────────────────────────── BUILD ─────────────────────────
   build-images:
-    needs: lint                 
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +43,7 @@ jobs:
         with:
           context: ./api-gateway
           tags: mib-gateway:ci
-          push: false         
+          push: false
 
       - name: Build backend image
         uses: docker/build-push-action@v5
@@ -65,3 +58,4 @@ jobs:
           context: ./frontend
           tags: mib-frontend:ci
           push: false
+
