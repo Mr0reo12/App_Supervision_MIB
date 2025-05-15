@@ -10,7 +10,9 @@ gateway.py – API Gateway asynchrone + cache Redis
 """
 
 from __future__ import annotations
-import os, asyncio, json
+import os
+import asyncio
+import json
 from urllib.parse import quote
 
 import httpx
@@ -23,9 +25,9 @@ from fastapi.middleware.cors import CORSMiddleware
 # ═════════════════════════════════════════════════════════════════════════════
 MIB_BACKEND = os.getenv("MIB_BACKEND_URL", "http://localhost:5001")
 
-REDIS_HOST  = os.getenv("REDIS_HOST", "localhost")   # conteneur ou localhost
-REDIS_PORT  = int(os.getenv("REDIS_PORT", "6379"))
-CACHE_TTL   = int(os.getenv("CACHE_TTL", "120"))     # secondes (2 min par défaut)
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")  # conteneur ou localhost
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+CACHE_TTL = int(os.getenv("CACHE_TTL", "120"))  # secondes (2 min par défaut)
 
 # Connexion Redis (decode_responses =True → str plutôt que bytes)
 rds = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
@@ -37,15 +39,17 @@ app = FastAPI(title="MIB API-Gateway (async + Redis)")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # 👉 à restreindre si besoin
+    allow_origins=["*"],  # 👉 à restreindre si besoin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 def home():
     return {"message": "API-Gateway MIB opérationnel."}
+
 
 # ═════════════════════════════════════════════════════════════════════════════
 # Helpers Redis : lecture / écriture JSON
@@ -55,9 +59,11 @@ def rget(key: str):
     val = rds.get(key)
     return json.loads(val) if val else None
 
+
 def rset(key: str, obj):
     """Écriture objet Python → JSON + TTL."""
     rds.setex(key, CACHE_TTL, json.dumps(obj))
+
 
 # ═════════════════════════════════════════════════════════════════════════════
 # 1)  /api/status/<client>  – liste des VM d’un client + checks
@@ -68,10 +74,10 @@ def rset(key: str, obj):
 async def get_assets_by_client(client: str):
     cache_key = f"status:{client}"
     cached = rget(cache_key)
-    if cached is not None:                       # → hit Redis
+    if cached is not None:  # → hit Redis
         return cached
 
-    encoded = quote(client)                      # encodage URL-safe
+    encoded = quote(client)  # encodage URL-safe
     async with httpx.AsyncClient(timeout=15.0) as http:
         # ───────────────── 1. récupérer les assets du client ────────────────
         r_assets = await http.get(f"{MIB_BACKEND}/assets?client={encoded}")
@@ -88,17 +94,17 @@ async def get_assets_by_client(client: str):
                 if r.status_code == 200:
                     return r.json()
             except Exception:
-                pass                           # on ignore les échecs isolés
+                pass  # on ignore les échecs isolés
             return None
 
         enriched = [
-            vm for vm in await asyncio.gather(*(fetch_vm(a) for a in assets))
-            if vm
+            vm for vm in await asyncio.gather(*(fetch_vm(a) for a in assets)) if vm
         ]
 
     result = {"data": enriched}
-    rset(cache_key, result)                     # → write cache
+    rset(cache_key, result)  # → write cache
     return result
+
 
 # ═════════════════════════════════════════════════════════════════════════════
 # 2)  /api/machine/<vm>  – détail d’une VM (pas de cache ici)
@@ -115,6 +121,7 @@ async def get_machine(machine_name: str):
     except Exception as e:
         raise HTTPException(500, f"Erreur lors du fetch machine : {e}")
 
+
 # ═════════════════════════════════════════════════════════════════════════════
 # 3)  /api/vmnames/<client>  – liste des noms de VM (auto-complétion)
 # ═════════════════════════════════════════════════════════════════════════════
@@ -130,9 +137,7 @@ async def list_vm_names(client: str):
         r = await http.get(f"{MIB_BACKEND}/assets?client={encoded}")
         r.raise_for_status()
         names = [
-            a.get("assetName")
-            for a in r.json().get("data", [])
-            if a.get("assetName")
+            a.get("assetName") for a in r.json().get("data", []) if a.get("assetName")
         ]
 
     result = {"names": names}

@@ -6,7 +6,8 @@
 ###############################################################################
 from __future__ import annotations
 from typing import List, Dict, Optional
-import asyncio, httpx
+import asyncio
+import httpx
 
 from fastapi import FastAPI, Request, HTTPException, Query
 from fastapi.responses import HTMLResponse
@@ -16,7 +17,7 @@ from fastapi.templating import Jinja2Templates
 # ═════════════════════════════════════════════════════════════════════════════
 # Paramètres globaux
 # ═════════════════════════════════════════════════════════════════════════════
-API_GATEWAY   = "http://localhost:5000"
+API_GATEWAY = "http://localhost:5000"
 VALID_CLIENTS = [
     "ORANGE APPLICATIONS FOR BUSINESS",
     "CTRE HOSP UNIVERSITAIRE DE MONTPELLIER",
@@ -29,6 +30,7 @@ VALID_CLIENTS = [
 app = FastAPI(title="Frontend – ATQIHF Dashboard")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
 
 # ═════════════════════════════════════════════════════════════════════════════
 # Helpers couleur-santé des boutons   (seulement rouge ou vert)
@@ -51,8 +53,12 @@ def status_to_color(tag: str) -> str:
       • KO_ANY  → rouge
       • ALL_OK  → vert
     """
-    return "bg-red-600 hover:bg-red-700" if tag == "KO_ANY" \
-           else "bg-green-600 hover:bg-green-700"
+    return (
+        "bg-red-600 hover:bg-red-700"
+        if tag == "KO_ANY"
+        else "bg-green-600 hover:bg-green-700"
+    )
+
 
 # 1) Accueil – boutons clients
 # ═════════════════════════════════════════════════════════════════════════════
@@ -61,6 +67,7 @@ async def index(request: Request):
     client_statuses: List[Dict] = []
 
     async with httpx.AsyncClient() as http:
+
         async def fetch_client(c):
             try:
                 r = await http.get(f"{API_GATEWAY}/api/status/{c}")
@@ -68,18 +75,24 @@ async def index(request: Request):
                 color = status_to_color(compute_global_status(data))
             except Exception:
                 color = "bg-gray-400 hover:bg-gray-500"
-            client_statuses.append({
-                "name": c,
-                "color": color,
-                "url": f"/status/{c}?all_ko=1",   # ← enlace directo a la tabla KO
-            })
+            client_statuses.append(
+                {
+                    "name": c,
+                    "color": color,
+                    "url": f"/status/{c}?all_ko=1",  # ← enlace directo a la tabla KO
+                }
+            )
 
         await asyncio.gather(*(fetch_client(c) for c in VALID_CLIENTS))
 
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "clients": client_statuses,
-    })
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "clients": client_statuses,
+        },
+    )
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 2)  Vue client  – tableau complet des checks KO/Critical
@@ -101,23 +114,28 @@ async def client_dashboard(request: Request, client: str):
         for chk in vm.get("monitoring_details", []):
             st = chk.get("status", "").lower()
             if st != "ok":
-                rows.append({
-                    "client"      : client,
-                    "vm"          : vm["machine"],
-                    "objectClass" : chk.get("objectClass") or "-",
-                    "parameter"   : chk.get("parameter")   or "-",
-                    "object"      : chk.get("object")      or "-",
-                    "status"      : chk.get("status")      or "Unknown",
-                    "severity"    : chk.get("severity")    or "-",
-                    "lastChange"  : chk.get("lastChange")  or "Never",
-                    "description" : chk.get("description") or "",
-                })
+                rows.append(
+                    {
+                        "client": client,
+                        "vm": vm["machine"],
+                        "objectClass": chk.get("objectClass") or "-",
+                        "parameter": chk.get("parameter") or "-",
+                        "object": chk.get("object") or "-",
+                        "status": chk.get("status") or "Unknown",
+                        "severity": chk.get("severity") or "-",
+                        "lastChange": chk.get("lastChange") or "Never",
+                        "description": chk.get("description") or "",
+                    }
+                )
 
-    return templates.TemplateResponse("client_dashboard.html", {
-        "request": request,
-        "client":   client,
-        "rows":     rows,
-    })
+    return templates.TemplateResponse(
+        "client_dashboard.html",
+        {
+            "request": request,
+            "client": client,
+            "rows": rows,
+        },
+    )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -134,25 +152,31 @@ async def machine_details(request: Request, machine_name: str):
     except Exception as e:
         raise HTTPException(500, str(e))
 
-    return templates.TemplateResponse("machine_details.html", {
-        "request": request,
-        "machine": machine,
-    })
+    return templates.TemplateResponse(
+        "machine_details.html",
+        {
+            "request": request,
+            "machine": machine,
+        },
+    )
+
 
 # 4) Agrégat Critical / Warning  – paramètre optionnel
 # ═════════════════════════════════════════════════════════════════════════════
 @app.get("/critical-assets", response_class=HTMLResponse)
 async def show_critical_assets(
-        request: Request,
-        status: Optional[str] = Query(None)   # peut être absent
+    request: Request, status: Optional[str] = Query(None)  # peut être absent
 ):
     # ─── cas 1 : pas de paramètre → afficher seulement les deux boutons ──────
     if status is None:
-        return templates.TemplateResponse("critical_assets.html", {
-            "request": request,
-            "rows":   [],
-            "status": "",
-        })
+        return templates.TemplateResponse(
+            "critical_assets.html",
+            {
+                "request": request,
+                "rows": [],
+                "status": "",
+            },
+        )
 
     # ─── cas 2 : validation du paramètre ─────────────────────────────────────
     status = status.capitalize()
@@ -162,6 +186,7 @@ async def show_critical_assets(
     rows: List[dict] = []
 
     async with httpx.AsyncClient() as http:
+
         async def gather_client(client_name):
             try:
                 r = await http.get(f"{API_GATEWAY}/api/status/{client_name}")
@@ -171,16 +196,23 @@ async def show_critical_assets(
                     for chk in vm.get("monitoring_details", []):
                         chk_status = chk["status"].lower()
                         if status == "Critical" and chk_status in {"critical", "ko"}:
-                            rows.append({"client": client_name, "vm": vm["machine"], **chk})
+                            rows.append(
+                                {"client": client_name, "vm": vm["machine"], **chk}
+                            )
                         elif status == "Warning" and chk_status == "warning":
-                            rows.append({"client": client_name, "vm": vm["machine"], **chk})
+                            rows.append(
+                                {"client": client_name, "vm": vm["machine"], **chk}
+                            )
             except Exception:
                 pass  # silencer les erreurs d’un client
 
         await asyncio.gather(*(gather_client(c) for c in VALID_CLIENTS))
 
-    return templates.TemplateResponse("critical_assets.html", {
-        "request": request,
-        "rows":   rows,
-        "status": status,
-    }) 
+    return templates.TemplateResponse(
+        "critical_assets.html",
+        {
+            "request": request,
+            "rows": rows,
+            "status": status,
+        },
+    )

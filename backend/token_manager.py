@@ -7,15 +7,19 @@ Gestion automatique du access-token pour l’API MIB
 """
 
 from __future__ import annotations
-import os, asyncio, datetime, httpx, logging
+import os
+import asyncio
+import datetime
+import httpx
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
 # ── .env ──────────────────────────────────────────────────────────────────────
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
-MIB_BASE    = os.getenv("MIB_BASE", "https://57.203.253.112:443")
-LOGIN_URL   = f"{MIB_BASE}/api/auth/login"
+MIB_BASE = os.getenv("MIB_BASE", "https://57.203.253.112:443")
+LOGIN_URL = f"{MIB_BASE}/api/auth/login"
 REFRESH_URL = f"{MIB_BASE}/api/auth/refresh"
 
 CAS_USER = os.getenv("CASIMIR_ACCOUNT")
@@ -25,12 +29,13 @@ if not CAS_USER or not CAS_PASS:
 
 logger = logging.getLogger("token_manager")
 
+
 # ── Singleton ────────────────────────────────────────────────────────────────
 class TokenManager:
     def __init__(self):
-        self._token:  str | None = None
+        self._token: str | None = None
         self._expiry: datetime.datetime | None = None
-        self._lock   = asyncio.Lock()
+        self._lock = asyncio.Lock()
 
     # API publique ------------------------------------------------------------
     async def startup(self):
@@ -49,12 +54,12 @@ class TokenManager:
     # Internes ----------------------------------------------------------------
     async def _login(self):
         """Appel /auth/login en x-www-form-urlencoded (obligatoire)."""
-        data    = {"userId": CAS_USER, "password": CAS_PASS}
+        data = {"userId": CAS_USER, "password": CAS_PASS}
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         async with httpx.AsyncClient(verify=False, timeout=10) as http:
             r = await http.post(LOGIN_URL, data=data, headers=headers)
             r.raise_for_status()
-            self._token  = r.json()["accessToken"]
+            self._token = r.json()["accessToken"]
             self._expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes=14)
             logger.info("✅  Nouveau token obtenu")
 
@@ -63,7 +68,7 @@ class TokenManager:
         async with httpx.AsyncClient(verify=False, timeout=10, headers=headers) as http:
             r = await http.post(REFRESH_URL)
             r.raise_for_status()
-            self._token  = r.json()["accessToken"]
+            self._token = r.json()["accessToken"]
             self._expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes=14)
             logger.info("🔄  Token rafraîchi")
 
@@ -83,6 +88,7 @@ class TokenManager:
             async with self._lock:
                 if self._is_expired():
                     await self._refresh_or_login()
+
 
 # instance globale
 token_mgr = TokenManager()
