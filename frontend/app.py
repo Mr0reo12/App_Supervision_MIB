@@ -17,7 +17,7 @@ from fastapi.templating import Jinja2Templates
 # ═════════════════════════════════════════════════════════════════════════════
 # Paramètres globaux
 # ═════════════════════════════════════════════════════════════════════════════
-API_GATEWAY = "http://localhost:5000"
+API_GATEWAY = "http://gateway:5000"
 VALID_CLIENTS = [
     "ORANGE APPLICATIONS FOR BUSINESS",
     "CTRE HOSP UNIVERSITAIRE DE MONTPELLIER",

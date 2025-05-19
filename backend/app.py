@@ -21,9 +21,10 @@ import redis
 from fastapi import FastAPI, HTTPException, Query
 from pathlib import Path
 from dotenv import load_dotenv
-from .token_manager import token_mgr
-
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+from token_manager import token_mgr
+
+
 
 
 MIB_BASE = os.getenv("MIB_BASE", "https://57.203.253.112:443")
@@ -36,7 +37,7 @@ CACHE_TTL = int(os.getenv("CACHE_TTL", "0"))  # all_assets (RAM)
 STATUS_TTL = int(os.getenv("STATUS_TTL", "60"))  # status VM  (Redis)
 MACHINE_TTL = int(os.getenv("MACHINE_TTL", "300"))  # détail VM  (Redis) ★ nouveau
 
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 rds = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
