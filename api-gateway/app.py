@@ -23,9 +23,9 @@ from fastapi.middleware.cors import CORSMiddleware
 # ═════════════════════════════════════════════════════════════════════════════
 # Paramètres / environnement
 # ═════════════════════════════════════════════════════════════════════════════
-MIB_BACKEND = os.getenv("MIB_BACKEND_URL", "http://localhost:5001")
+MIB_BACKEND = os.getenv("MIB_BACKEND_URL", "http://backend:5001")
 
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")  # conteneur ou localhost
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")  # conteneur ou localhost
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 CACHE_TTL = int(os.getenv("CACHE_TTL", "120"))  # secondes (2 min par défaut)
 
