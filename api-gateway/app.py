@@ -1,13 +1,7 @@
-"""
-gateway.py – API Gateway asynchrone + cache Redis
-───────────────────────────────────────────────────────────────────────────────
-• Sert de façade entre le frontend et le backend MIB (/assets & /machine)
-• Met en cache Redis (TTL = CACHE_TTL) pour soulager le backend
-• Trois endpoints :
-      1. GET /api/status/<client>   → assets + checks, agrégé & mis en cache
-      2. GET /api/machine/<vm>      → détail direct (pas de cache ici)
-      3. GET /api/vmnames/<client>  → liste des noms de VM (auto-complétion)
-"""
+# gateway.py – API Gateway asynchrone + cache Redis (amélioré)
+# • Façade entre le frontend et le backend MIB (/assets & /machine)
+# • Cache Redis pour soulager le backend
+# • 3 endpoints : /api/status, /api/machine, /api/vmnames
 
 from __future__ import annotations
 import os
@@ -19,96 +13,102 @@ import httpx
 import redis
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
-# ═════════════════════════════════════════════════════════════════════════════
-# Paramètres / environnement
-# ═════════════════════════════════════════════════════════════════════════════
+# ── Config / environnement ────────────────────────────────────────────────────
 MIB_BACKEND = os.getenv("MIB_BACKEND_URL", "http://backend:5001")
+REDIS_HOST  = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT  = int(os.getenv("REDIS_PORT", "6379"))
+CACHE_TTL   = int(os.getenv("CACHE_TTL", "120"))  # secondes
 
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")  # conteneur ou localhost
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-CACHE_TTL = int(os.getenv("CACHE_TTL", "120"))  # secondes (2 min par défaut)
-
-# Connexion Redis (decode_responses =True → str plutôt que bytes)
 rds = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
-# ═════════════════════════════════════════════════════════════════════════════
-# Initialisation FastAPI
-# ═════════════════════════════════════════════════════════════════════════════
-app = FastAPI(title="MIB API-Gateway (async + Redis)")
+# Control de concurrencia
+MAX_CONCURRENCY = int(os.getenv("GATEWAY_CONCURRENCY", "10"))
+semaphore = asyncio.Semaphore(MAX_CONCURRENCY)
 
+# ── FastAPI + CORS ────────────────────────────────────────────────────────────
+app = FastAPI(title="MIB API-Gateway (async + Redis)")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 👉 à restreindre si besoin
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
 @app.get("/")
 def home():
     return {"message": "API-Gateway MIB opérationnel."}
 
-
-# ═════════════════════════════════════════════════════════════════════════════
-# Helpers Redis : lecture / écriture JSON
-# ═════════════════════════════════════════════════════════════════════════════
+# ── Helpers Redis JSON ────────────────────────────────────────────────────────
 def rget(key: str):
-    """Lecture JSON → objet Python (None si absent)."""
     val = rds.get(key)
     return json.loads(val) if val else None
 
-
 def rset(key: str, obj):
-    """Écriture objet Python → JSON + TTL."""
     rds.setex(key, CACHE_TTL, json.dumps(obj))
 
+# ── Retry decorator pour chaque fetch de VM ──────────────────────────────────
+@retry(
+    stop=stop_after_attempt(2),
+    wait=wait_fixed(0.5),
+    retry=retry_if_exception_type(httpx.HTTPError),
+)
+async def fetch_one(http: httpx.AsyncClient, name: str) -> dict:
+    resp = await http.get(f"{MIB_BACKEND}/machine/{name}")
+    resp.raise_for_status()
+    return resp.json()
 
-# ═════════════════════════════════════════════════════════════════════════════
-# 1)  /api/status/<client>  – liste des VM d’un client + checks
-#     ↳ lourde : agrège un appel /assets + N appels /machine
-#     ↳ résultat mis en cache Redis
-# ═════════════════════════════════════════════════════════════════════════════
+# ── Endpoint 1: /api/status/{client} ──────────────────────────────────────────
 @app.get("/api/status/{client}")
 async def get_assets_by_client(client: str):
     cache_key = f"status:{client}"
     cached = rget(cache_key)
-    if cached is not None:  # → hit Redis
+    if cached is not None:
         return cached
 
-    encoded = quote(client)  # encodage URL-safe
+    encoded = quote(client)
     async with httpx.AsyncClient(timeout=15.0) as http:
-        # ───────────────── 1. récupérer les assets du client ────────────────
+        # 1) lista assets
         r_assets = await http.get(f"{MIB_BACKEND}/assets?client={encoded}")
         r_assets.raise_for_status()
         assets = r_assets.json().get("data", [])
 
-        # ───────────────── 2. détail de chaque VM en parallèle ──────────────
+        # 2) fetch paralelo con semáforo + retry + payload de error limpio
         async def fetch_vm(asset):
             name = asset.get("assetName")
             if not name:
                 return None
-            try:
-                r = await http.get(f"{MIB_BACKEND}/machine/{name}")
-                if r.status_code == 200:
-                    return r.json()
-            except Exception:
-                pass  # on ignore les échecs isolés
-            return None
+            async with semaphore:
+                try:
+                    return await fetch_one(http, name)
+                except httpx.HTTPStatusError as exc:
+                    desc = f"HTTP {exc.response.status_code}"
+                except Exception:
+                    desc = "Fetch failed"
+                # payload mínimo de error
+                return {
+                    "machine": name,
+                    "global_status": "Critical",
+                    "monitoring_details": [{
+                        "objectClass": "-",
+                        "parameter":   "-",
+                        "object":      "-",
+                        "status":      "Error",
+                        "severity":    "-",
+                        "lastChange":  "Never",
+                        "description": desc,
+                    }],
+                }
 
-        enriched = [
-            vm for vm in await asyncio.gather(*(fetch_vm(a) for a in assets)) if vm
-        ]
+        enriched = await asyncio.gather(*(fetch_vm(a) for a in assets))
 
     result = {"data": enriched}
-    rset(cache_key, result)  # → write cache
+    rset(cache_key, result)
     return result
 
-
-# ═════════════════════════════════════════════════════════════════════════════
-# 2)  /api/machine/<vm>  – détail d’une VM (pas de cache ici)
-# ═════════════════════════════════════════════════════════════════════════════
+# ── Endpoint 2: /api/machine/{machine_name} ─────────────────────────────────
 @app.get("/api/machine/{machine_name}")
 async def get_machine(machine_name: str):
     try:
@@ -121,10 +121,7 @@ async def get_machine(machine_name: str):
     except Exception as e:
         raise HTTPException(500, f"Erreur lors du fetch machine : {e}")
 
-
-# ═════════════════════════════════════════════════════════════════════════════
-# 3)  /api/vmnames/<client>  – liste des noms de VM (auto-complétion)
-# ═════════════════════════════════════════════════════════════════════════════
+# ── Endpoint 3: /api/vmnames/{client} ────────────────────────────────────────
 @app.get("/api/vmnames/{client}")
 async def list_vm_names(client: str):
     cache_key = f"vmnames:{client}"
@@ -136,9 +133,7 @@ async def list_vm_names(client: str):
     async with httpx.AsyncClient(timeout=15.0) as http:
         r = await http.get(f"{MIB_BACKEND}/assets?client={encoded}")
         r.raise_for_status()
-        names = [
-            a.get("assetName") for a in r.json().get("data", []) if a.get("assetName")
-        ]
+        names = [a["assetName"] for a in r.json().get("data", []) if a.get("assetName")]
 
     result = {"names": names}
     rset(cache_key, result)

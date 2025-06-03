@@ -8,11 +8,12 @@ from __future__ import annotations
 from typing import List, Dict, Optional
 import asyncio
 import httpx
-
+from datetime import datetime
 from fastapi import FastAPI, Request, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from zoneinfo import ZoneInfo
 
 # ═════════════════════════════════════════════════════════════════════════════
 # Paramètres globaux
@@ -66,8 +67,10 @@ def status_to_color(tag: str) -> str:
 async def index(request: Request):
     client_statuses: List[Dict] = []
 
-    async with httpx.AsyncClient() as http:
-
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(20.0, connect=5.0),  # timeout ajusté
+    ) as http:
+    
         async def fetch_client(c):
             try:
                 r = await http.get(f"{API_GATEWAY}/api/status/{c}")
@@ -84,12 +87,15 @@ async def index(request: Request):
             )
 
         await asyncio.gather(*(fetch_client(c) for c in VALID_CLIENTS))
-
+    paris_tz = ZoneInfo("Europe/Paris")
+    last_update = datetime.now(paris_tz).strftime("%Y-%m-%d %H:%M:%S %Z")
+    # ── 3) Rendre la page d'accueil avec les données collectées ─────────────
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
             "clients": client_statuses,
+            "last_update": last_update,  # Date time de la dernière mise à jour
         },
     )
 

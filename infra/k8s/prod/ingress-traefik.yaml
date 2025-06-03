@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-supervision-ingress
+  namespace: prod
+  annotations:
+    # Indicamos que K3s debe usar el controlador Traefik
+    kubernetes.io/ingress.class: "traefik"
+
+    # Redirigir todo HTTP→HTTPS (opcional)
+    traefik.ingress.kubernetes.io/redirect-entry-point: "https"
+spec:
+  # ---- TLS: usamos el Secret que creamos (sin hosts) ----
+  tls:
+    - secretName: atqihf-ip-tls
+
+  # ---- Reglas “catch-all” sin host: cualquier petición entrante ----
+  rules:
+    - http:
+        paths:
+          # 1) Rutas que empiecen con /api → al gateway (puerto 5000)
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 5000
+
+          # 2) Todo lo demás ("/") → al frontend (puerto 5002)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 5002

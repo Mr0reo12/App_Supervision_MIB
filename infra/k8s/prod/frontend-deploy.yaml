@@ -1,0 +1,40 @@
+# frontend-deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-supervision-frontend
+  namespace: prod
+  labels:
+    app: app-supervision-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-supervision-frontend
+  template:
+    metadata:
+      labels:
+        app: app-supervision-frontend
+    spec:
+      tolerations:
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        node-role.kubernetes.io/master: "true"
+      containers:
+        - name: frontend
+          image: angelo321lagomarsino123699/app_supervision:frontend-dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5002
+          env:
+            - name: API_GATEWAY
+              value: "http://gateway:5000"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
