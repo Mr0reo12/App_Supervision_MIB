@@ -15,16 +15,11 @@ import redis
 from fastapi import FastAPI, HTTPException, Query
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from dotenv import load_dotenv
-<<<<<<< HEAD
 
 load_dotenv()
 from token_manager import token_mgr
-=======
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-from token_manager import token_mgr
 
 
->>>>>>> origin/main
 
 # ─── Config API & cache ────────────────────────────────────────────────────────
 MIB_BASE       = os.getenv("MIB_BASE", "https://57.203.253.112:443")
@@ -37,17 +32,11 @@ CACHE_TTL   = int(os.getenv("CACHE_TTL",   "0"))   # all_assets (RAM)
 STATUS_TTL  = int(os.getenv("STATUS_TTL",  "60"))  # status VM  (Redis)
 MACHINE_TTL = int(os.getenv("MACHINE_TTL", "300")) # détail VM  (Redis)
 
-<<<<<<< HEAD
 rds = redis.Redis(
     host=os.getenv("REDIS_HOST", "redis"),
     port=int(os.getenv("REDIS_PORT", "6379")),
     decode_responses=True
 )
-=======
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-rds = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
->>>>>>> origin/main
 
 logger = logging.getLogger("backend")
 
