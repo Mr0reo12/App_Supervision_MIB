@@ -1,39 +1,40 @@
+# docker-compose.override.yml
 version: "3.9"
 
-services:
-  redis:
-    image: redis:7.2
-    container_name: redis
-    ports:
-      - "6379:6379"
+networks:
+  mib_net:            # user-defined network shared with redis‐server
+    external: true    # it already exists – see the notes below
 
+services:
   backend:
-    build:
-      context: ./backend
+    build: ./backend
+    env_file: .env
     container_name: app_supervision_mib_backend
-    volumes:
-      - ./backend/token.txt:/app/token.txt
     ports:
       - "5001:5001"
-    depends_on:
-      - redis
     environment:
-      - REDIS_HOST=redis
+      REDIS_HOST: redis-server      # hostname = existing container name
+    networks:
+      - mib_net
 
   gateway:
-    build:
-      context: ./api-gateway
+    build: ./api-gateway
     container_name: app_supervision_mib_gateway
-    ports:
-      - "5000:5000"
     depends_on:
       - backend
+    ports:
+      - "5000:5000"
+    environment:
+      REDIS_HOST: redis-server
+    networks:
+      - mib_net
 
   frontend:
-    build:
-      context: ./frontend
+    build: ./frontend
     container_name: app_supervision_mib_frontend
-    ports:
-      - "5002:5002"
     depends_on:
       - gateway
+    ports:
+      - "5002:5002"
+    networks:
+      - mib_net

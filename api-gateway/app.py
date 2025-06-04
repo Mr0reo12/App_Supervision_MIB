@@ -15,11 +15,18 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
+<<<<<<< HEAD
 # ── Config / environnement ────────────────────────────────────────────────────
 MIB_BACKEND = os.getenv("MIB_BACKEND_URL", "http://backend:5001")
 REDIS_HOST  = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT  = int(os.getenv("REDIS_PORT", "6379"))
 CACHE_TTL   = int(os.getenv("CACHE_TTL", "120"))  # secondes
+=======
+# ═════════════════════════════════════════════════════════════════════════════
+# Paramètres / environnement
+# ═════════════════════════════════════════════════════════════════════════════
+MIB_BACKEND = os.getenv("MIB_BACKEND_URL", "http://backend:5001")
+>>>>>>> origin/main
 
 rds = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
