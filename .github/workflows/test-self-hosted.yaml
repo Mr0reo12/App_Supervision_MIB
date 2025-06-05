@@ -18,25 +18,17 @@ jobs:
           sudo mkdir -p /home/actions/.kube
           sudo cp /root/.kube/config /home/actions/.kube/config
           sudo chown -R actions:actions /home/actions/.kube
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config \
+          config use-context kubernetes-admin@kubernetes
 
-      # 2) Exportamos la variable KUBECONFIG para que 'kubectl' la utilice
+      # 2) Exportamos la variable para que kubectl sepa dónde buscar el config
       - name: Configurar KUBECONFIG
         run: |
           echo "export KUBECONFIG=/home/actions/.kube/config" >> $GITHUB_ENV
 
-      # 3) Ahora sí, probamos kubectl dentro del runner
-      - name: Mostrar contexto activo de kubectl
-        run: |
-          echo "Contexto actual de kubeconfig:"
-          kubectl config current-context
-          echo
-
+      # 3) Ahora sí, listamos los pods en el namespace dev (o cualquier otro)
       - name: Listar pods en namespace 'dev'
-        run: |
-          echo "Pods en namespace 'dev':"
-          kubectl get pods -n dev
+        run: kubectl get pods -n dev
 
       - name: Listar pods en namespace 'production'
-        run: |
-          echo "Pods en namespace 'production':"
-          kubectl get pods -n production
+        run: kubectl get pods -n production
