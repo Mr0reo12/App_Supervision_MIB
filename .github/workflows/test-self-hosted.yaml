@@ -17,12 +17,6 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
 
-      - name: Mostrar contexto activo de kubectl
-        run: |
-          echo "Contexto actual de kubeconfig:"
-          kubectl config current-context
-          echo
-
       - name: Listar todos los pods en el namespace 'dev'
         run: |
           echo "Pods en namespace 'dev':"
