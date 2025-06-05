@@ -15,13 +15,8 @@ jobs:
       # 1) Copiamos el kubeconfig de root a /home/actions/.kube/config
       - name: Copiar kubeconfig al usuario actions
         run: |
-          # Creamos la carpeta ~/.kube para el usuario actions
           sudo mkdir -p /home/actions/.kube
-
-          # Copiamos el archivo de kubeconfig (el de root) al home de 'actions'
           sudo cp /root/.kube/config /home/actions/.kube/config
-
-          # Ajustamos dueños/propietarios para que el runner (usuario 'actions') pueda leerlo
           sudo chown -R actions:actions /home/actions/.kube
 
       # 2) Exportamos la variable KUBECONFIG para que 'kubectl' la utilice
