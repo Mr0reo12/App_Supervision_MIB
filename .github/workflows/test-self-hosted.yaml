@@ -1,25 +1,16 @@
-name: Prueba Self-Hosted Runner
+name: Prueba Hola en Self-Hosted Runner
 
+# Se dispara en cada push a la rama main (puedes ajustar a tu gusto)
 on:
   push:
     branches: [main]
 
 jobs:
-  # Este job se ejecutará en tu runner “VMWorker1”
-  prueba-kubectl:
-    runs-on: [self-hosted, linux, vmworker1]
+  saludo:
+    # Aquí indicamos que queremos usar tu runner “VMWorker1”,
+    # que en GitHub aparece con etiquetas: self-hosted, Linux, X64
+    runs-on: [self-hosted, Linux, X64]
+
     steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
-
-      - name: Mostrar contexto actual de Kubernetes
-        run: |
-          echo "Contexto activo de kubeconfig:"
-          kubectl config current-context
-          echo
-
-      - name: Listar nodos del clúster
-        run: kubectl get nodes
-
-      - name: Listar pods en namespace dev
-        run: kubectl get pods -n dev
+      - name: Echo "Hola"
+        run: echo "Hola"
