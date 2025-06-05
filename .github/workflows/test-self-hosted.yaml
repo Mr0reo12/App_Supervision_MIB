@@ -1,23 +1,47 @@
-# .github/workflows/test-kubectl.yaml
-
 name: Prueba kubectl en Self-Hosted Runner
 
-# Se dispara en cada push a main (ajusta si prefieres otra rama o evento)
 on:
   push:
     branches: [main]
 
 jobs:
   ver-pods:
-    # Asegúrate de usar las etiquetas que tiene tu runner VMWorker1:
-    # en tu captura aparece: self-hosted, Linux, X64
     runs-on: [self-hosted, Linux, X64]
 
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
 
-      - name: Listar todos los pods en el namespace 'dev'
+      # 1) Copiamos el kubeconfig de root a /home/actions/.kube/config
+      - name: Copiar kubeconfig al usuario actions
+        run: |
+          # Creamos la carpeta ~/.kube para el usuario actions
+          sudo mkdir -p /home/actions/.kube
+
+          # Copiamos el archivo de kubeconfig (el de root) al home de 'actions'
+          sudo cp /root/.kube/config /home/actions/.kube/config
+
+          # Ajustamos dueños/propietarios para que el runner (usuario 'actions') pueda leerlo
+          sudo chown -R actions:actions /home/actions/.kube
+
+      # 2) Exportamos la variable KUBECONFIG para que 'kubectl' la utilice
+      - name: Configurar KUBECONFIG
+        run: |
+          echo "export KUBECONFIG=/home/actions/.kube/config" >> $GITHUB_ENV
+
+      # 3) Ahora sí, probamos kubectl dentro del runner
+      - name: Mostrar contexto activo de kubectl
+        run: |
+          echo "Contexto actual de kubeconfig:"
+          kubectl config current-context
+          echo
+
+      - name: Listar pods en namespace 'dev'
         run: |
           echo "Pods en namespace 'dev':"
           kubectl get pods -n dev
+
+      - name: Listar pods en namespace 'production'
+        run: |
+          echo "Pods en namespace 'production':"
+          kubectl get pods -n production
