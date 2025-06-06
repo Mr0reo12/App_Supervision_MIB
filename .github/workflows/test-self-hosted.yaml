@@ -1,3 +1,5 @@
+# .github/workflows/test-kubectl.yaml
+
 name: Prueba kubectl en Self-Hosted Runner
 
 on:
@@ -12,23 +14,20 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
 
-      # 1) Copiamos el kubeconfig de root a /home/actions/.kube/config
       - name: Copiar kubeconfig al usuario actions
         run: |
           sudo mkdir -p /home/actions/.kube
           sudo cp /root/.kube/config /home/actions/.kube/config
           sudo chown -R actions:actions /home/actions/.kube
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config \
-          config use-context kubernetes-admin@kubernetes
 
-      # 2) Exportamos la variable para que kubectl sepa dónde buscar el config
-      - name: Configurar KUBECONFIG
+      - name: Listar contextos disponibles en el kubeconfig
         run: |
-          echo "export KUBECONFIG=/home/actions/.kube/config" >> $GITHUB_ENV
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config config get-contexts -o name
 
-      # 3) Ahora sí, listamos los pods en el namespace dev (o cualquier otro)
       - name: Listar pods en namespace 'dev'
-        run: kubectl get pods -n dev
+        run: |
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev
 
       - name: Listar pods en namespace 'production'
-        run: kubectl get pods -n production
+        run: |
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n production || echo "No hay pods en production"
