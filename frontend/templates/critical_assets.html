@@ -1,82 +1,208 @@
 {% extends "layout.html" %}
 
-{# ─────────────────────────────────────────────────────────────────────────────
-  critical_assets.html – Vue “Critical / Warning”
-  • Boutons de sélection en haut
-  • Tableau ultra-compact : Client | VM | Status
-  • Message + bouton « Back » si aucun résultat
-───────────────────────────────────────────────────────────────────────────── #}
-
 {% block title  %}Assets in Different States{% endblock %}
 {% block header %}Assets in Different States{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 py-8">
+<style>
+    .content-wrapper {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 32px 16px;
+    }
 
-    {# ─── Sélecteur de statut ─────────────────────────────────────────────── #}
-    <div class="flex justify-center gap-10 mb-8">
+    .status-selector {
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+        margin-bottom: 32px;
+    }
+
+    .status-button {
+        padding: 12px 48px;
+        border-radius: 999px;
+        font-weight: 600;
+        color: white;
+        text-decoration: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: background-color 0.3s ease;
+    }
+
+    .status-critical {
+        background-color: #ef4444; /* rojo activo */
+    }
+
+    .status-critical:hover {
+        background-color: #dc2626;
+    }
+
+    .status-critical-inactive {
+        background-color: #b91c1c;
+    }
+
+    .status-critical-inactive:hover {
+        background-color: #991b1b;
+    }
+
+    .status-warning {
+        background-color: #facc15;
+        color: black;
+    }
+
+    .status-warning:hover {
+        background-color: #eab308;
+    }
+
+    .status-warning-inactive {
+        background-color: #ca8a04;
+        color: black;
+    }
+
+    .status-warning-inactive:hover {
+        background-color: #a16207;
+    }
+
+    .table-box {
+        background-color: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        padding: 32px;
+    }
+
+    .empty-message {
+        text-align: center;
+        font-size: 20px;
+        color: #4b5563;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    thead {
+        background-color: #f3f4f6;
+        color: #374151;
+    }
+
+    th, td {
+        padding: 12px 16px;
+        text-align: left;
+        border-top: 1px solid #ddd;
+    }
+
+    tr:hover {
+        background-color: #f9fafb;
+    }
+
+    .vm-link {
+        color: #ea580c;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    .status-tag {
+        display: inline-block;
+        padding: 6px 16px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .tag-critical {
+        background-color: #fee2e2;
+        color: #dc2626;
+    }
+
+    .tag-warning {
+        background-color: #fef9c3;
+        color: #a16207;
+    }
+
+    .tag-ok {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+
+    .back-wrapper {
+        margin-top: 40px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .back-button {
+        padding: 12px 40px;
+        background-color: #f97316;
+        color: white;
+        font-weight: 600;
+        border-radius: 999px;
+        text-decoration: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: background-color 0.3s ease;
+    }
+
+    .back-button:hover {
+        background-color: #ea580c;
+    }
+</style>
+
+<div class="content-wrapper">
+
+    <!-- Estado selector -->
+    <div class="status-selector">
         <a href="/critical-assets?status=Critical"
-           class="px-12 py-3 rounded-full text-white font-semibold shadow
-                  transition {% if status == 'Critical' %}bg-red-500{% else %}
-                  bg-red-600 hover:bg-red-700{% endif %}">Critical</a>
+           class="status-button {% if status == 'Critical' %}status-critical{% else %}status-critical-inactive{% endif %}">
+           Critical
+        </a>
 
         <a href="/critical-assets?status=Warning"
-           class="px-12 py-3 rounded-full text-white font-semibold shadow
-                  transition {% if status == 'Warning' %}bg-yellow-400{% else %}
-                  bg-yellow-500 hover:bg-yellow-600{% endif %}">Warning</a>
+           class="status-button {% if status == 'Warning' %}status-warning{% else %}status-warning-inactive{% endif %}">
+           Warning
+        </a>
     </div>
 
-    {# ─── Contenu principal ───────────────────────────────────────────────── #}
-    <div class="bg-white rounded-xl shadow p-8">
+    <!-- Caja principal -->
+    <div class="table-box">
         {% if not status %}
-            <p class="text-center text-xl text-gray-600">
-                Please select a state to view related assets.
-            </p>
+            <p class="empty-message">Please select a state to view related assets.</p>
 
         {% elif rows|length == 0 %}
-            <p class="text-center text-xl text-gray-600">
-                No assets found in <span class="font-semibold">{{ status }}</span> state.
+            <p class="empty-message">
+                No assets found in <span style="font-weight: 600;">{{ status }}</span> state.
             </p>
 
         {% else %}
-            <div class="overflow-x-auto">
-                <table class="min-w-full table-auto text-sm">
-                    <thead class="bg-gray-100 text-gray-700">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
                         <tr>
-                            <th class="px-4 py-2 text-left">Client</th>
-                            <th class="px-4 py-2 text-left">VM</th>
-                            <th class="px-4 py-2 text-left">Status</th>
+                            <th>Client</th>
+                            <th>VM</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in rows %}
-                        <tr class="border-t hover:bg-gray-50">
-                            <td class="px-4 py-2">{{ row.client }}</td>
-
-                            <td class="px-4 py-2">
-                                <a href="/machine/{{ row.vm }}"
-                                   class="text-orange-600 font-semibold underline">
+                        <tr>
+                            <td>{{ row.client }}</td>
+                            <td>
+                                <a href="/machine/{{ row.vm }}" class="vm-link">
                                    {{ row.vm }}
                                 </a>
                             </td>
-
-                            <td class="px-4 py-2">
+                            <td>
                                 {% set st = row.status.lower() %}
                                 {% if st in ['critical', 'ko'] %}
-                                    <span class="inline-block px-3 py-1 rounded-full
-                                                 bg-red-100 text-red-600 font-semibold">
-                                        {{ row.status }}
-                                    </span>
+                                    <span class="status-tag tag-critical">{{ row.status }}</span>
                                 {% elif st == 'warning' %}
-                                    <span class="inline-block px-3 py-1 rounded-full
-                                                 bg-yellow-100 text-yellow-700 font-semibold">
-                                        Warning
-                                    </span>
+                                    <span class="status-tag tag-warning">Warning</span>
                                 {% else %}
-                                    <span class="inline-block px-3 py-1 rounded-full
-                                                 bg-green-100 text-green-700 font-semibold">
-                                        OK
-                                    </span>
+                                    <span class="status-tag tag-ok">OK</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -87,18 +213,30 @@
         {% endif %}
     </div>
 
-    {# ─── Bouton retour (visible seulement si un état est sélectionné) ────── #}
+    <!-- Botón de regreso -->
     {% if status %}
-    <div class="mt-10 flex justify-center">
-        <a href="/critical-assets"
-           class="px-10 py-3 rounded-full bg-orange-500 hover:bg-orange-600
-                  text-white font-semibold shadow transition">
-            Back
-        </a>
+    <div class="back-wrapper">
+        <a href="/critical-assets" class="back-button">Back</a>
     </div>
     {% endif %}
 
 </div>
+
+<script>
+    // jQuery hover feedback y efecto para el botón de regreso
+    $(document).ready(function () {
+        $(".status-button").hover(function () {
+            $(this).css("opacity", "0.9");
+        }, function () {
+            $(this).css("opacity", "1");
+        });
+
+        $(".back-button").click(function () {
+            $(this).css("transform", "scale(0.96)");
+            setTimeout(() => {
+                $(this).css("transform", "scale(1)");
+            }, 150);
+        });
+    });
+</script>
 {% endblock %}
-
-

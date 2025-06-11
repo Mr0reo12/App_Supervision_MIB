@@ -4,71 +4,170 @@
 {% block header %}Asset status for {{ client }}{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 py-6">
+<style>
+    .content-container {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 24px 16px;
+    }
 
-  <h3 class="text-xl font-semibold mb-4">
-    Assets in KO/Warning state for {{ client }}
-  </h3>
+    .content-container h3 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 16px;
+    }
 
-  <div class="overflow-x-auto">
-    <table class="min-w-full table-auto text-sm border rounded-lg overflow-hidden">
-      <thead class="bg-gray-100 text-gray-700">
-        <tr>
-          <th class="px-4 py-2 text-left">VM</th>
-          <th class="px-4 py-2 text-left">Object Class</th>
-          <th class="px-4 py-2 text-left">Parameter</th>
-          <th class="px-4 py-2 text-left">Object</th>
-          <th class="px-4 py-2 text-left">Status</th>
-          <th class="px-4 py-2 text-left">Severity</th>
-          <th class="px-4 py-2 text-left">Last Change</th>
-          <th class="px-4 py-2 text-left">Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if rows %}
-          {% for row in rows %}
-          <tr class="border-t">
-            <td class="px-4 py-2">
-              <a href="/machine/{{ row.vm | urlencode }}"
-                 class="text-orange-600 hover:underline">
-                {{ row.vm }}
-              </a>
-            </td>
-            <td class="px-4 py-2">{{ row.objectClass }}</td>
-            <td class="px-4 py-2">{{ row.parameter }}</td>
-            <td class="px-4 py-2">{{ row.object }}</td>
-            <td class="px-4 py-2">
-              <span
-                class="inline-block px-3 py-0.5 rounded-full text-xs font-semibold
-                       {{ 'bg-red-100 text-red-700' if row.status.lower() in ['critical','ko'] 
-                          else 'bg-yellow-100 text-yellow-800' }}">
-                {{ row.status }}
-              </span>
-            </td>
-            <td class="px-4 py-2">{{ row.severity }}</td>
-            <td class="px-4 py-2">{{ row.lastChange }}</td>
-            <td class="px-4 py-2">{{ row.description }}</td>
-          </tr>
-          {% endfor %}
-        {% else %}
-          <tr>
-            <td colspan="8" class="px-4 py-6 text-center text-green-700">
-              🎉 No hay checks KO/Warning para este cliente.
-            </td>
-          </tr>
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
+    .table-wrapper {
+        overflow-x: auto;
+    }
 
-  <div class="mt-6 text-center">
-    <button
-      onclick="history.back()"
-      class="bg-orange-500 hover:bg-orange-600 text-white font-bold
-             py-2 px-6 rounded-lg shadow">
-      Back
-    </button>
-  </div>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+    }
 
+    thead {
+        background-color: #f5f5f5;
+        color: #444;
+    }
+
+    th, td {
+        text-align: left;
+        padding: 12px 16px;
+        border-top: 1px solid #ddd;
+    }
+
+    td a {
+        color: #d35400;
+        text-decoration: none;
+    }
+
+    td a:hover {
+        text-decoration: underline;
+    }
+
+    .status-tag {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-critical {
+        background-color: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .status-warning {
+        background-color: #fef9c3;
+        color: #a16207;
+    }
+
+    .no-issues {
+        padding: 24px 0;
+        text-align: center;
+        color: #15803d;
+        font-weight: bold;
+    }
+
+    .back-button {
+        margin-top: 24px;
+        display: inline-block;
+        padding: 12px 24px;
+        background-color: #f97316;
+        color: white;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .back-button:hover {
+        background-color: #ea580c;
+    }
+
+    tr:hover {
+        background-color: #f0f0f0;
+    }
+</style>
+
+<div class="content-container">
+    <h3>Assets in KO/Warning state for {{ client }}</h3>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>VM</th>
+                    <th>Object Class</th>
+                    <th>Parameter</th>
+                    <th>Object</th>
+                    <th>Status</th>
+                    <th>Severity</th>
+                    <th>Last Change</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if rows %}
+                    {% for row in rows %}
+                    <tr>
+                        <td>
+                            <a href="/machine/{{ row.vm | urlencode }}">{{ row.vm }}</a>
+                        </td>
+                        <td>{{ row.objectClass }}</td>
+                        <td>{{ row.parameter }}</td>
+                        <td>{{ row.object }}</td>
+                        <td>
+                            <span class="status-tag {{ 'status-critical' if row.status.lower() in ['critical','ko'] else 'status-warning' }}">
+                                {{ row.status }}
+                            </span>
+                        </td>
+                        <td>{{ row.severity }}</td>
+                        <td>{{ row.lastChange }}</td>
+                        <td>{{ row.description }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="no-issues">
+                            🎉 No hay checks KO/Warning para este cliente.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="text-center">
+        <button onclick="history.back()" class="back-button">Back</button>
+    </div>
 </div>
+
+<script>
+    // Puedes añadir más lógica aquí si deseas animaciones
+    $(document).ready(function() {
+        $('tr').hover(
+            function () {
+                $(this).css('background-color', '#f0f0f0');
+            },
+            function () {
+                $(this).css('background-color', '');
+            }
+        );
+
+        $('.back-button').on('click', function () {
+            $(this).css('transform', 'scale(0.95)');
+            setTimeout(() => $(this).css('transform', 'scale(1)'), 100);
+        });
+    });
+</script>
 {% endblock %}
+

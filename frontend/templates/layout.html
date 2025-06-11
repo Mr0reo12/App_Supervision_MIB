@@ -1,75 +1,160 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-gray-100">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Dashboard{% endblock %}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide-icons"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        orange: { 500: '#FF7900', 600: '#FF6600' },
-                        sidebar: { DEFAULT: '#1e2837', hover: '#2f3a4c' }
-                    },
-                },
-            },
-        }
-    </script>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/jquery-3.7.1.min.js"></script>
 </head>
-<body class="h-screen flex bg-gray-100 relative">
-    <!-- Sidebar -->
-    <div class="w-64 bg-sidebar text-white flex flex-col">
-        <a href="/" class="p-4 flex items-center space-x-2">
-            <img src="/static/business.webp" alt="Logo" class="h-24">
+<body class="app-body">
+
+<style>
+    body.app-body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        background-color: #f3f4f6;
+        font-family: Arial, sans-serif;
+    }
+
+    .sidebar {
+        width: 260px;
+        background-color: #1e2837;
+        color: white;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidebar a.logo {
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sidebar img {
+        height: 96px;
+    }
+
+    .sidebar .menu {
+        padding: 16px;
+    }
+
+    .sidebar .menu-title {
+        font-size: 10px;
+        font-weight: bold;
+        color: #bbb;
+        text-transform: uppercase;
+        margin-bottom: 16px;
+    }
+
+    .sidebar .menu a {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        border-radius: 8px;
+        background-color: #2f3a4c;
+        color: white;
+        text-decoration: none;
+        transition: background-color 0.3s ease;
+        margin-top: 8px;
+    }
+
+    .sidebar .menu a:hover {
+        background-color: #FF7900;
+    }
+
+    .sidebar svg {
+        width: 20px;
+        height: 20px;
+        stroke: white;
+    }
+
+    .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .main header {
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .main header h1 {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 24px 16px;
+        font-size: 28px;
+        font-weight: bold;
+        color: black;
+    }
+
+    .main-content {
+        flex: 1;
+        overflow-y: auto;
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 24px 16px;
+    }
+
+    footer {
+        background-color: black;
+        width: 100%;
+        padding: 20px 0;
+        text-align: center;
+    }
+
+    footer p {
+        color: white;
+        font-size: 14px;
+        margin: 0;
+    }
+</style>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <a href="/" class="logo">
+        <img src="/static/business.webp" alt="Logo">
+    </a>
+    <div class="menu">
+        <p class="menu-title">Menu</p>
+
+        <a href="/">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            <span>Dashboard</span>
         </a>
-        <div class="p-4">
-            <p class="text-xs font-semibold text-gray-400 uppercase mb-4">Menu</p>
-        
-            <!-- Dashboard Button -->
-            <a href="/" class="flex items-center space-x-2 p-2 rounded-lg bg-sidebar-hover text-white hover:bg-orange-500 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="14" width="7" height="7"></rect>
-                    <rect x="3" y="14" width="7" height="7"></rect>
-                </svg>
-                <span>Dashboard</span>
-            </a>
-        
-            <!-- Critical Assets Button (con ícono de alerta) -->
-            <a href="/critical-assets" class="flex items-center space-x-2 p-2 rounded-lg bg-sidebar-hover text-white hover:bg-orange-500 transition-colors mt-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 2a10 10 0 100 20 10 10 0 000-20z" />
-                </svg>
-                <span>Critical/Warning</span>
-            </a>
-        </div>
-        
+
+        <a href="/critical-assets">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 2a10 10 0 100 20 10 10 0 000-20z" />
+            </svg>
+            <span>Critical/Warning</span>
+        </a>
     </div>
+</div>
 
-    <!-- Main content area -->
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-white shadow">
-            <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-                <h1 class="text-3xl font-bold tracking-tight text-black">{% block header %}Dashboard{% endblock %}</h1>
-            </div>
-        </header>
+<!-- Main content -->
+<div class="main">
+    <header>
+        <h1>{% block header %}Dashboard{% endblock %}</h1>
+    </header>
 
-        <main class="flex-1 overflow-auto">
-            <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-                {% block content %}{% endblock %}
-            </div>
-        </main>
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
 
-        <!-- Footer -->
-        <footer class="bg-black w-full py-5">
-            <div class="container mx-auto px-4 text-center">
-                <p class="text-white text-sm">2025 Orange Business Services All rights reserved. &copy;</p>
-            </div>
-        </footer>
-    </div>
+    <footer>
+        <p>2025 Orange Business Services All rights reserved. &copy;</p>
+    </footer>
+</div>
 </body>
-</html>   
+</html>

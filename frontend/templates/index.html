@@ -4,21 +4,119 @@
 {% block header %}Welcome to the ATQIHF Dashboard{% endblock %}
 
 {% block content %}
-<div class="px-4 py-6 sm:px-0">
-    <div class="rounded-lg border-4 border-dashed border-gray-200 p-4 text-center">
-        <h2 class="text-2xl font-semibold mb-6">Select a customer</h2>
+<style>
+    .container {
+        padding: 24px 16px;
+    }
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    .box {
+        border: 4px dashed #ccc;
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        background-color: white;
+    }
+
+    .box h2 {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 24px;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+        .grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    .client-link {
+        display: block;
+        padding: 16px 24px;
+        border-radius: 8px;
+        font-weight: bold;
+        color: white;
+        text-decoration: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        text-align: center;
+    }
+
+    .client-link:hover {
+        transform: translateY(-5px) scale(1.05);
+    }
+
+    .client-link.red {
+        background-color: #d32f2f;
+    }
+
+    .client-link.red:hover {
+        background-color: #b71c1c;
+    }
+
+    .client-link.green {
+        background-color: #388e3c;
+    }
+
+    .client-link.green:hover {
+        background-color: #2e7d32;
+    }
+
+    .client-link.gray {
+        background-color: #9e9e9e;
+    }
+
+    .client-link.gray:hover {
+        background-color: #757575;
+    }
+
+    .last-update {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #777;
+        text-align: center;
+    }
+</style>
+
+<div class="container">
+    <div class="box">
+        <h2>Select a customer</h2>
+
+        <div class="grid">
             {% for client in clients %}
-            <a href="/status/{{ client.name | urlencode }}"
-               class="{{ client.color }} text-white font-bold py-4 px-6 rounded-lg shadow-lg
-                      transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
+            <a href="{{ client.url }}"
+               class="client-link {{ client.color }}">
                 {{ client.name }}
             </a>
             {% endfor %}
-            <div class="mt-4 text-sm text-gray-500 text-center"> 
-                <p>Last Update : {{last_update}}</p>
+        </div>
+
+        <div class="last-update">
+            <p>Last Update : {{ last_update }}</p>
         </div>
     </div>
 </div>
-{% endblock %} 
+
+<script src="/static/jquery-3.7.1.min.js"></script>
+<script>
+    $(".client-link").hover(
+        function () {
+            $(this).css("box-shadow", "0 8px 12px rgba(0,0,0,0.2)");
+        },
+        function () {
+            $(this).css("box-shadow", "0 4px 6px rgba(0,0,0,0.1)");
+        }
+    );
+</script>
+{% endblock %}

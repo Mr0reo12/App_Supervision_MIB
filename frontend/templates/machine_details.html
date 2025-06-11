@@ -4,61 +4,179 @@
 {% block header %}Details for {{ machine.machine }}{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-6">
+<style>
+    .page-container {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 24px 16px;
+    }
 
-  <!-- encabezado naranja -->
-  <div class="rounded-t-xl bg-gradient-to-r from-orange-600 to-orange-800 text-white px-6 py-4 shadow">
-    <h2 class="text-2xl font-bold">{{ machine.machine }}</h2>
-    <p class="text-sm">Last update: {{ current_time }}</p>
-  </div>
+    .header-box {
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        padding: 24px;
+        color: white;
+        background: linear-gradient(to right, #ea580c, #9a3412);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
 
-  <!-- cuerpo blanco -->
-  <div class="bg-white shadow px-6 py-6 rounded-b-xl">
+    .header-box h2 {
+        font-size: 24px;
+        font-weight: bold;
+        margin: 0;
+    }
 
-    <h3 class="text-lg font-semibold text-gray-700 mb-2">Organization</h3>
-    <p class="text-purple-600 font-medium mb-6">{{ machine.organization }}</p>
+    .header-box p {
+        font-size: 14px;
+        margin: 4px 0 0 0;
+    }
 
-    <!-- tabla de checks -->
-    <div class="overflow-x-auto">
-      <table class="min-w-full text-sm text-gray-800">
-        <thead class="bg-gray-100 text-gray-700">
-          <tr>
-            <th class="px-4 py-2 text-left">Object&nbsp;Class</th>
-            <th class="px-4 py-2 text-left">Parameter</th>
-            <th class="px-4 py-2 text-left">Object</th>
-            <th class="px-4 py-2 text-left">Status</th>
-            <th class="px-4 py-2 text-left">Severity</th>
-            <th class="px-4 py-2 text-left">Last&nbsp;Change</th>
-            <th class="px-4 py-2 text-left">Description</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-        {% for chk in machine.monitoring_details %}
-          <tr class="{{ 'bg-white' if loop.index0%2==0 else 'bg-gray-50' }} hover:bg-gray-50">
-            <td class="px-4 py-2">{{ chk.objectClass }}</td>
-            <td class="px-4 py-2">{{ chk.parameter }}</td>
-            <td class="px-4 py-2">{{ chk.object }}</td>
-            <td class="px-4 py-2">
-              {% set s = chk.status.lower() %}
-              {% if s in ['ok'] %}
-                <span class="inline-block px-3 py-1 rounded-full bg-green-100 text-green-800 font-semibold">OK</span>
-              {% elif s in ['critical','ko'] %}
-                <span class="inline-block px-3 py-1 rounded-full bg-red-100 text-red-800 font-semibold">Critical</span>
-              {% elif s == 'warning' %}
-                <span class="inline-block px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-semibold">Warning</span>
-              {% else %}
-                <span class="inline-block px-3 py-1 rounded-full bg-gray-200 text-gray-700 font-semibold">{{ chk.status }}</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-2">{{ chk.severity }}</td>
-            <td class="px-4 py-2 whitespace-nowrap">{{ chk.lastChange }}</td>
-            <td class="px-4 py-2">{{ chk.description }}</td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+    .body-box {
+        background-color: white;
+        padding: 24px;
+        border-bottom-left-radius: 16px;
+        border-bottom-right-radius: 16px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+
+    .body-box h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+    }
+
+    .organization-name {
+        color: #7e22ce;
+        font-weight: 500;
+        margin-bottom: 24px;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        color: #1f2937;
+    }
+
+    thead {
+        background-color: #f3f4f6;
+        color: #374151;
+    }
+
+    th, td {
+        text-align: left;
+        padding: 12px 16px;
+        border-top: 1px solid #ddd;
+    }
+
+    tbody tr:nth-child(even) {
+        background-color: #f9fafb;
+    }
+
+    tbody tr:hover {
+        background-color: #f3f4f6;
+    }
+
+    .status-tag {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .tag-ok {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+
+    .tag-critical {
+        background-color: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .tag-warning {
+        background-color: #fef9c3;
+        color: #a16207;
+    }
+
+    .tag-unknown {
+        background-color: #e5e7eb;
+        color: #374151;
+    }
+</style>
+
+<div class="page-container">
+
+    <!-- Encabezado naranja -->
+    <div class="header-box">
+        <h2>{{ machine.machine }}</h2>
+        <p>Last update: {{ current_time }}</p>
     </div>
 
-  </div>
+    <!-- Cuerpo blanco -->
+    <div class="body-box">
+        <h3>Organization</h3>
+        <p class="organization-name">{{ machine.organization }}</p>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Object Class</th>
+                        <th>Parameter</th>
+                        <th>Object</th>
+                        <th>Status</th>
+                        <th>Severity</th>
+                        <th>Last Change</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for chk in machine.monitoring_details %}
+                    <tr>
+                        <td>{{ chk.objectClass }}</td>
+                        <td>{{ chk.parameter }}</td>
+                        <td>{{ chk.object }}</td>
+                        <td>
+                            {% set s = chk.status.lower() %}
+                            {% if s == 'ok' %}
+                                <span class="status-tag tag-ok">OK</span>
+                            {% elif s in ['critical','ko'] %}
+                                <span class="status-tag tag-critical">Critical</span>
+                            {% elif s == 'warning' %}
+                                <span class="status-tag tag-warning">Warning</span>
+                            {% else %}
+                                <span class="status-tag tag-unknown">{{ chk.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ chk.severity }}</td>
+                        <td>{{ chk.lastChange }}</td>
+                        <td>{{ chk.description }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
+
+<script>
+    $(document).ready(function () {
+        // Animación ligera para filas
+        $("tbody tr").hover(
+            function () {
+                $(this).css("background-color", "#f3f4f6");
+            },
+            function () {
+                $(this).css("background-color", "");
+            }
+        );
+    });
+</script>
 {% endblock %}

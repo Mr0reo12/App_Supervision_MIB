@@ -50,16 +50,17 @@ def compute_global_status(vms: List[Dict]) -> str:
 
 def status_to_color(tag: str) -> str:
     """
-    Mappe vers la classe Tailwind :
-      • KO_ANY  → rouge
-      • ALL_OK  → vert
+    Mappea a clases CSS puras definidas en HTML.
+      • KO_ANY  → 'red'
+      • ALL_OK  → 'green'
+      • fallback → 'gray'
     """
-    return (
-        "bg-red-600 hover:bg-red-700"
-        if tag == "KO_ANY"
-        else "bg-green-600 hover:bg-green-700"
-    )
-
+    if tag == "KO_ANY":
+        return "red"
+    elif tag == "ALL_OK":
+        return "green"
+    else:
+        return "gray"
 
 # 1) Accueil – boutons clients
 # ═════════════════════════════════════════════════════════════════════════════
@@ -68,7 +69,7 @@ async def index(request: Request):
     client_statuses: List[Dict] = []
 
     async with httpx.AsyncClient(
-        timeout=httpx.Timeout(20.0, connect=5.0),  # timeout ajusté
+        timeout=httpx.Timeout(60.0, connect=10.0),  # timeout ajusté
     ) as http:
     
         async def fetch_client(c):
