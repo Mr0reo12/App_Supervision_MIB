@@ -34,7 +34,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Lint with Ruff
-        continue-on-error: true  # ← Esto permite que falle sin romper el flujo
+        continue-on-error: true
         run: |
           pip install ruff==0.4.*
           ruff .
@@ -45,39 +45,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Login a Docker Hub
+      - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Build & Push API Gateway a Docker Hub
+      - name: Build & Push API Gateway
         uses: docker/build-push-action@v5
         with:
           context: ./api-gateway
           push: true
           tags: docker.io/angelo3211agomarsino123699/mib-gateway:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-      - name: Build & Push Backend a Docker Hub
+      - name: Build & Push Backend
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
           tags: docker.io/angelo3211agomarsino123699/mib-backend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-      - name: Build & Push Frontend a Docker Hub
+      - name: Build & Push Frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
           tags: docker.io/angelo3211agomarsino123699/mib-frontend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   deploy-to-k8s:
     name: Deploy to Dev Environment
