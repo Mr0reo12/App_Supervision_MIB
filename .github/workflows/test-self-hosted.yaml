@@ -54,21 +54,21 @@ jobs:
         with:
           context: ./api-gateway
           push: true
-          tags: docker.io/angelo3211agomarsino123699/app_supervision:gateway-dev
+          tags: docker.io/angelo321lagomarsino123699/app_supervision:gateway-dev
 
       - name: Build & Push Backend
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
-          tags: docker.io/angelo3211agomarsino123699/app_supervision:backend-dev
+          tags: docker.io/angelo321lagomarsino123699/app_supervision:backend-dev
 
       - name: Build & Push Frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: docker.io/angelo3211agomarsino123699/app_supervision:frontend-dev
+          tags: docker.io/angelo321lagomarsino123699/app_supervision:frontend-dev
 
   deploy-to-k8s:
     name: Deploy to Dev Environment
