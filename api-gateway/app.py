@@ -15,18 +15,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
-<<<<<<< HEAD
 # ── Config / environnement ────────────────────────────────────────────────────
 MIB_BACKEND = os.getenv("MIB_BACKEND_URL", "http://backend:5001")
-REDIS_HOST  = os.getenv("REDIS_HOST", "redis")
-REDIS_PORT  = int(os.getenv("REDIS_PORT", "6379"))
-CACHE_TTL   = int(os.getenv("CACHE_TTL", "120"))  # secondes
-=======
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+CACHE_TTL = int(os.getenv("CACHE_TTL", "120"))  # secondes
+
 # ═════════════════════════════════════════════════════════════════════════════
 # Paramètres / environnement
 # ═════════════════════════════════════════════════════════════════════════════
 MIB_BACKEND = os.getenv("MIB_BACKEND_URL", "http://backend:5001")
->>>>>>> origin/main
 
 rds = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
@@ -44,19 +42,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 def home():
     return {"message": "API-Gateway MIB opérationnel."}
 
 # ── Helpers Redis JSON ────────────────────────────────────────────────────────
+
+
 def rget(key: str):
     val = rds.get(key)
     return json.loads(val) if val else None
+
 
 def rset(key: str, obj):
     rds.setex(key, CACHE_TTL, json.dumps(obj))
 
 # ── Retry decorator pour chaque fetch de VM ──────────────────────────────────
+
+
 @retry(
     stop=stop_after_attempt(2),
     wait=wait_fixed(0.5),
@@ -68,6 +72,8 @@ async def fetch_one(http: httpx.AsyncClient, name: str) -> dict:
     return resp.json()
 
 # ── Endpoint 1: /api/status/{client} ──────────────────────────────────────────
+
+
 @app.get("/api/status/{client}")
 async def get_assets_by_client(client: str):
     cache_key = f"status:{client}"
@@ -100,11 +106,11 @@ async def get_assets_by_client(client: str):
                     "global_status": "Critical",
                     "monitoring_details": [{
                         "objectClass": "-",
-                        "parameter":   "-",
-                        "object":      "-",
-                        "status":      "Error",
-                        "severity":    "-",
-                        "lastChange":  "Never",
+                        "parameter": "-",
+                        "object": "-",
+                        "status": "Error",
+                        "severity": "-",
+                        "lastChange": "Never",
                         "description": desc,
                     }],
                 }
@@ -116,6 +122,8 @@ async def get_assets_by_client(client: str):
     return result
 
 # ── Endpoint 2: /api/machine/{machine_name} ─────────────────────────────────
+
+
 @app.get("/api/machine/{machine_name}")
 async def get_machine(machine_name: str):
     try:
@@ -129,6 +137,8 @@ async def get_machine(machine_name: str):
         raise HTTPException(500, f"Erreur lors du fetch machine : {e}")
 
 # ── Endpoint 3: /api/vmnames/{client} ────────────────────────────────────────
+
+
 @app.get("/api/vmnames/{client}")
 async def list_vm_names(client: str):
     cache_key = f"vmnames:{client}"

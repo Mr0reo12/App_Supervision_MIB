@@ -64,6 +64,8 @@ def status_to_color(tag: str) -> str:
 
 # 1) Accueil – boutons clients
 # ═════════════════════════════════════════════════════════════════════════════
+
+
 @app.get("/")
 async def index(request: Request):
     client_statuses: List[Dict] = []
@@ -71,7 +73,7 @@ async def index(request: Request):
     async with httpx.AsyncClient(
         timeout=httpx.Timeout(60.0, connect=10.0),  # timeout ajusté
     ) as http:
-    
+
         async def fetch_client(c):
             try:
                 r = await http.get(f"{API_GATEWAY}/api/status/{c}")

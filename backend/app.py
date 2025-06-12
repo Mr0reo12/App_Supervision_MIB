@@ -4,6 +4,7 @@
 # • Si pas de cache, ne supprime plus silencieusement la VM : la marque en « Error »
 
 from __future__ import annotations
+from token_manager import token_mgr
 from typing import List, Dict, Any, Optional
 import os
 import time
@@ -17,20 +18,18 @@ from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_t
 from dotenv import load_dotenv
 
 load_dotenv()
-from token_manager import token_mgr
-
 
 
 # ─── Config API & cache ────────────────────────────────────────────────────────
-MIB_BASE       = os.getenv("MIB_BASE", "https://57.203.253.112:443")
-ASSETS_SEARCH  = f"{MIB_BASE}/api/v1/assets/search"
-ASSET_STATUS   = f"{MIB_BASE}/api/v1/assets/{{asset_id}}/status"
+MIB_BASE = os.getenv("MIB_BASE", "https://57.203.253.112:443")
+ASSETS_SEARCH = f"{MIB_BASE}/api/v1/assets/search"
+ASSET_STATUS = f"{MIB_BASE}/api/v1/assets/{{asset_id}}/status"
 
 L2_SUPPORT_FILTER = "ATQIHF"
 
-CACHE_TTL   = int(os.getenv("CACHE_TTL",   "0"))   # all_assets (RAM)
-STATUS_TTL  = int(os.getenv("STATUS_TTL",  "60"))  # status VM  (Redis)
-MACHINE_TTL = int(os.getenv("MACHINE_TTL", "300")) # détail VM  (Redis)
+CACHE_TTL = int(os.getenv("CACHE_TTL", "0"))   # all_assets (RAM)
+STATUS_TTL = int(os.getenv("STATUS_TTL", "60"))  # status VM  (Redis)
+MACHINE_TTL = int(os.getenv("MACHINE_TTL", "300"))  # détail VM  (Redis)
 
 rds = redis.Redis(
     host=os.getenv("REDIS_HOST", "redis"),
@@ -41,45 +40,61 @@ rds = redis.Redis(
 logger = logging.getLogger("backend")
 
 # ─── Cache RAM pour /assets ────────────────────────────────────────────────────
+
+
 class InMemoryTTLCache:
     def __init__(self):
-        self._store: Dict[str, Any]   = {}
-        self._exp:   Dict[str, float] = {}
+        self._store: Dict[str, Any] = {}
+        self._exp: Dict[str, float] = {}
+
     def get(self, k: str) -> Optional[Any]:
-        if CACHE_TTL == 0: return None
+        if CACHE_TTL == 0:
+            return None
         exp = self._exp.get(k)
         if exp and exp > time.time():
             return self._store[k]
         self._store.pop(k, None)
         self._exp.pop(k, None)
         return None
+
     def set(self, k: str, v: Any):
-        if CACHE_TTL == 0: return
+        if CACHE_TTL == 0:
+            return
         self._store[k] = v
-        self._exp[k]    = time.time() + CACHE_TTL
+        self._exp[k] = time.time() + CACHE_TTL
+
 
 cache = InMemoryTTLCache()
 
 # ─── Helpers Redis JSON ───────────────────────────────────────────────────────
+
+
 def r_status_get(asset_id: str) -> Optional[list]:
     raw = rds.get(f"status:{asset_id}")
     return json.loads(raw) if raw else None
 
+
 def r_status_set(asset_id: str, data: list):
     rds.setex(f"status:{asset_id}", STATUS_TTL, json.dumps(data))
+
 
 def r_machine_get(asset_id: str) -> Optional[dict]:
     raw = rds.get(f"machine:{asset_id}")
     return json.loads(raw) if raw else None
 
+
 def r_machine_set(asset_id: str, data: dict):
     rds.setex(f"machine:{asset_id}", MACHINE_TTL, json.dumps(data))
 
 # ─── Token manager ─────────────────────────────────────────────────────────────
+
+
 async def read_token() -> str:
     return await token_mgr.get_token()
 
 # ─── Retry decorator pour /status fetch ────────────────────────────────────────
+
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_fixed(1),
@@ -94,6 +109,8 @@ async def fetch_status(http: httpx.AsyncClient, asset_id: str, token: str) -> li
     return resp.json().get("data", [])
 
 # ─── Pagination + cache RAM pour /assets ──────────────────────────────────────
+
+
 async def list_assets(http: httpx.AsyncClient, token: str) -> list[dict]:
     cached = cache.get("all_assets")
     if cached is not None:
@@ -128,16 +145,18 @@ async def list_assets(http: httpx.AsyncClient, token: str) -> list[dict]:
 STATUS_CRIT = {"critical", "ko", "error", "not ok"}
 STATUS_WARN = {"warning", "warn"}
 
+
 def normalize_check(item: dict) -> Dict[str, str]:
     return {
         "objectClass": item.get("objectClass") or "-",
-        "parameter":   item.get("parameter")   or "-",
-        "object":      item.get("object")      or "-",
-        "status":      (item.get("status") or "").capitalize() or "Unknown",
-        "severity":    item.get("severity")    or "-",
-        "lastChange":  item.get("lastChange")  or "Never",
+        "parameter": item.get("parameter") or "-",
+        "object": item.get("object") or "-",
+        "status": (item.get("status") or "").capitalize() or "Unknown",
+        "severity": item.get("severity") or "-",
+        "lastChange": item.get("lastChange") or "Never",
         "description": item.get("description") or "",
     }
+
 
 def build_status(monitored_by: List[dict]) -> Dict[str, Any]:
     services, crit, warn, unknown = {}, False, False, False
@@ -147,11 +166,14 @@ def build_status(monitored_by: List[dict]) -> Dict[str, Any]:
         if st == "ok":
             services[desc] = "OK"
         elif st in STATUS_CRIT:
-            services[desc] = "Critical"; crit = True
+            services[desc] = "Critical"
+            crit = True
         elif st in STATUS_WARN:
-            services[desc] = "Warning"; warn = True
+            services[desc] = "Warning"
+            warn = True
         else:
-            services[desc] = "Unknown"; unknown = True
+            services[desc] = "Unknown"
+            unknown = True
 
     if crit:
         global_status = "Critical"
@@ -164,14 +186,18 @@ def build_status(monitored_by: List[dict]) -> Dict[str, Any]:
 
     return {"monitored_services": services, "global_status": global_status}
 
+
 # ─── FastAPI setup ────────────────────────────────────────────────────────────
 app = FastAPI(title="MIB Backend – cache RAM + Redis")
+
 
 @app.on_event("startup")
 async def on_startup():
     await token_mgr.startup()
 
 # ─── /assets endpoint ─────────────────────────────────────────────────────────
+
+
 @app.get("/assets", summary="Liste des assets (filtrage par client)")
 async def get_assets(client: Optional[str] = Query(None)):
     token = await read_token()
@@ -184,6 +210,8 @@ async def get_assets(client: Optional[str] = Query(None)):
     return {"data": assets}
 
 # ─── /machine/{machine_name} endpoint amélioré ─────────────────────────────────
+
+
 @app.get("/machine/{machine_name}", summary="Détail complet d’une VM")
 async def get_machine(machine_name: str):
     token = await read_token()
@@ -217,7 +245,7 @@ async def get_machine(machine_name: str):
             status_summary = build_status(partial)
             monitoring_details = [normalize_check(it) for it in partial]
             payload = {
-                "machine":          machine_name,
+                "machine": machine_name,
                 **status_summary,
                 "monitoring_details": monitoring_details,
                 **asset
@@ -225,18 +253,18 @@ async def get_machine(machine_name: str):
             return payload
         # sinon on crée une entrée « Error » unique
         error_payload = {
-            "machine":          machine_name,
+            "machine": machine_name,
             "monitored_services": {},
-            "global_status":    "Critical",
+            "global_status": "Critical",
             "monitoring_details": [
                 {
-                    "objectClass":  "-",
-                    "parameter":    "-",
-                    "object":       "-",
-                    "status":       "Error",
-                    "severity":     "-",
-                    "lastChange":   "Never",
-                    "description":  f"Fetch failed: {exc}"
+                    "objectClass": "-",
+                    "parameter": "-",
+                    "object": "-",
+                    "status": "Error",
+                    "severity": "-",
+                    "lastChange": "Never",
+                    "description": f"Fetch failed: {exc}"
                 }
             ],
             **asset
@@ -246,10 +274,10 @@ async def get_machine(machine_name: str):
         return error_payload
 
     # 4) cas nominal, build payload et cache complet
-    status_summary     = build_status(monitored_by)
+    status_summary = build_status(monitored_by)
     monitoring_details = [normalize_check(it) for it in monitored_by]
     vm_payload = {
-        "machine":            machine_name,
+        "machine": machine_name,
         **status_summary,
         "monitoring_details": monitoring_details,
         **asset
