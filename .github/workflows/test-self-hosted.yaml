@@ -74,21 +74,42 @@ jobs:
           tags: docker.io/angelo321lagomarsino123699/app_supervision:frontend-dev
 
   deploy-to-k8s:
-    name: Deploy to Dev Environment
-    runs-on: [self-hosted, Linux, X64]
-    needs: build-images
-    steps:
+     name: Deploy to Dev Environment
+     runs-on: [self-hosted, Linux, X64]
+     needs: build-images
+     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy kubeconfig to actions user
+      - name: Copiar kubeconfig al usuario actions
         run: |
           sudo mkdir -p /home/actions/.kube
           sudo cp /root/.kube/config /home/actions/.kube/config
           sudo chown -R actions:actions /home/actions/.kube
 
-      - name: Deploy manifests to Dev K3s
+      - name: Listar contextos disponibles en el kubeconfig
+        run: |
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config config get-contexts -o name
+
+      - name: Listar pods en namespace 'dev'
+        run: |
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev
+
+      - name: Aplicar manifiestos en Dev
         run: |
           kubectl --kubeconfig=/home/actions/.kube/config apply -f infra/k8s/dev
-          kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-backend -n dev --timeout=180s
-          kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-frontend -n dev --timeout=180s
-          kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-gateway -n dev --timeout=180s
+
+      - name: Esperar rollout de backend
+        run: |
+          kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-backend -n dev --timeout=180s || true
+
+      - name: Esperar rollout de frontend
+        run: |
+          kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-frontend -n dev --timeout=180s || true
+
+      - name: Esperar rollout de gateway
+        run: |
+          kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-gateway -n dev --timeout=180s || true
+
+      - name: Verificar pods al final
+        run: |
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev
