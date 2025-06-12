@@ -8,8 +8,7 @@ on:
 
 jobs:
   lint-dockerfiles:
-    runs-on: ubuntu-latest
-    continue-on-error: true
+    runs-on: [self-hosted, Linux, X64]
     strategy:
       matrix:
         file:
@@ -24,7 +23,7 @@ jobs:
           dockerfile: ${{ matrix.file }}
 
   lint-python:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     needs: lint-dockerfiles
     continue-on-error: true
     steps:
@@ -33,19 +32,17 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - name: Lint with Ruff
-        continue-on-error: true
-        run: |
+      - run: |
           pip install ruff==0.4.*
           ruff .
 
   build-images:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     needs: [lint-dockerfiles, lint-python]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Login to Docker Hub
+      - name: Login a Docker Hub
         uses: docker/login-action@v2
         with:
           registry: docker.io
@@ -57,27 +54,27 @@ jobs:
         with:
           context: ./api-gateway
           push: true
-          tags: docker.io/angelo321lagomarsino123699/app_supervision:gateway-dev
+          tags: docker.io/angelo3211agomarsino123699/app_supervision:gateway-dev
 
       - name: Build & Push Backend
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
-          tags: docker.io/angelo321lagomarsino123699/app_supervision:backend-dev
+          tags: docker.io/angelo3211agomarsino123699/app_supervision:backend-dev
 
       - name: Build & Push Frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: docker.io/angelo321lagomarsino123699/app_supervision:frontend-dev
+          tags: docker.io/angelo3211agomarsino123699/app_supervision:frontend-dev
 
   deploy-to-k8s:
-     name: Deploy to Dev Environment
-     runs-on: [self-hosted, Linux, X64]
-     needs: build-images
-     steps:
+    name: Deploy to Dev Environment
+    runs-on: [self-hosted, Linux, X64]
+    needs: build-images
+    steps:
       - uses: actions/checkout@v4
 
       - name: Copiar kubeconfig al usuario actions
@@ -86,30 +83,17 @@ jobs:
           sudo cp /root/.kube/config /home/actions/.kube/config
           sudo chown -R actions:actions /home/actions/.kube
 
-      - name: Listar contextos disponibles en el kubeconfig
+      - name: Ver pods en 'dev' antes del deploy
         run: |
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config config get-contexts -o name
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev || echo "Error obteniendo pods"
 
-      - name: Listar pods en namespace 'dev'
+      - name: Deploy a K3S
         run: |
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config apply -f infra/k8s/dev
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-backend -n dev --timeout=180s
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-frontend -n dev --timeout=180s
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-gateway -n dev --timeout=180s
 
-      - name: Aplicar manifiestos en Dev
-        run: |
-          kubectl --kubeconfig=/home/actions/.kube/config apply -f infra/k8s/dev
-
-      - name: Esperar rollout de backend
-        run: |
-          kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-backend -n dev --timeout=180s || true
-
-      - name: Esperar rollout de frontend
-        run: |
-          kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-frontend -n dev --timeout=180s || true
-
-      - name: Esperar rollout de gateway
-        run: |
-          kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-gateway -n dev --timeout=180s || true
-
-      - name: Verificar pods al final
+      - name: Ver pods en 'dev' después del deploy
         run: |
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev
