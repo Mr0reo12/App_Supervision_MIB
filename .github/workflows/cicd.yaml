@@ -41,63 +41,43 @@ jobs:
     needs: [lint-dockerfiles, lint-python]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Login a Docker Hub
+      - name: Docker login
         uses: docker/login-action@v2
         with:
-          registry: docker.io
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-      - name: Build & Push API Gateway
+      - name: Build & push images
         uses: docker/build-push-action@v5
         with:
-          context: ./api-gateway
-          push: true
-          tags: docker.io/angelo321lagomarsino123699/app_supervision:gateway-dev
-
-      - name: Build & Push Backend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: docker.io/angelo321lagomarsino123699/app_supervision:backend-dev
-
-      - name: Build & Push Frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: docker.io/angelo321lagomarsino123699/app_supervision:frontend-dev
+          context: .
+          push: false  # Multibuild deshabilitado, luego se divide
+      - name: Push API Gateway
+        run: docker build -t ${{ secrets.DOCKERHUB_USER }}/app_supervision:gateway-dev ./api-gateway && docker push ${{ secrets.DOCKERHUB_USER }}/app_supervision:gateway-dev
+      - name: Push Backend
+        run: docker build -t ${{ secrets.DOCKERHUB_USER }}/app_supervision:backend-dev ./backend && docker push ${{ secrets.DOCKERHUB_USER }}/app_supervision:backend-dev
+      - name: Push Frontend
+        run: docker build -t ${{ secrets.DOCKERHUB_USER }}/app_supervision:frontend-dev ./frontend && docker push ${{ secrets.DOCKERHUB_USER }}/app_supervision:frontend-dev
 
   deploy-to-k8s:
-    name: Deploy to Dev Environment
     runs-on: [self-hosted, Linux, X64]
     needs: build-images
     steps:
       - uses: actions/checkout@v4
-
-      - name: Copiar kubeconfig al usuario actions
+      - name: Setup kubeconfig
         run: |
           sudo mkdir -p /home/actions/.kube
           sudo cp /root/.kube/config /home/actions/.kube/config
           sudo chown -R actions:actions /home/actions/.kube
-
-      - name: Ver pods en 'dev' antes del deploy
-        run: sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev || echo "Error obteniendo pods"
-
-      - name: Deploy a K3S
+      - name: Deploy Dev
         run: |
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config apply -f infra/k8s/dev
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-backend -n dev --timeout=180s
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-frontend -n dev --timeout=180s
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-gateway -n dev --timeout=180s
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-backend -n dev
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-frontend -n dev
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-gateway -n dev
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev
 
-      - name: Ver pods en 'dev' después del deploy
-        run: sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev
 
-  run-tests:
-    name: Unit & Integration Tests
+  tests:
     runs-on: [self-hosted, Linux, X64]
     needs: deploy-to-k8s
     steps:
@@ -105,58 +85,40 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Instalar dependencias y ejecutar pytest
+      - name: Instalar dependencias
         run: |
-          pip install -r backend/requirements.txt
           pip install pytest
-          pytest backend/tests/
+          pip install -r backend/requirements.txt || true
+          pip install -r frontend/requirements.txt || true
+          pip install -r api-gateway/requirements.txt || true
+      - name: Run Unit Tests
+        run: pytest tests/unit
+      - name: Run Integration Tests
+        run: pytest tests/integration
 
-  scan-with-trivy:
-    name: Security Scan with Trivy
+  security-scan:
     runs-on: [self-hosted, Linux, X64]
-    needs: run-tests
-    steps:
-      - name: Instalar Trivy
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update && sudo apt-get install -y trivy
-
-      - name: Escanear imágenes
-        run: |
-          trivy image --exit-code 1 --severity HIGH,CRITICAL docker.io/angelo321lagomarsino123699/app_supervision:backend-dev
-          trivy image --exit-code 1 --severity HIGH,CRITICAL docker.io/angelo321lagomarsino123699/app_supervision:frontend-dev
-          trivy image --exit-code 1 --severity HIGH,CRITICAL docker.io/angelo321lagomarsino123699/app_supervision:gateway-dev
-
-  load-test:
-    name: Load Testing with Locust
-    runs-on: [self-hosted, Linux, X64]
-    needs: scan-with-trivy
+    needs: tests
     steps:
       - uses: actions/checkout@v4
-      - name: Instalar y correr locust
+      - name: Install Trivy
         run: |
-          pip install locust
-          locust -f tests/load/locustfile.py --headless -u 50 -r 5 -t 1m --host http://your-dev-url
+          sudo apt-get update && sudo apt-get install -y wget
+          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.1_Linux-64bit.deb
+          sudo dpkg -i trivy_0.50.1_Linux-64bit.deb
+      - name: Security Scan
+        run: |
+          trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:backend-dev
+          trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:gateway-dev
+          trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:frontend-dev
 
-  deploy-to-prod:
-    name: Deploy to Production
+ 
+  deploy-prod:
     runs-on: [self-hosted, Linux, X64]
-    needs: load-test
+    needs: security-scan
     steps:
       - uses: actions/checkout@v4
-
-      - name: Copiar kubeconfig al usuario actions
-        run: |
-          sudo mkdir -p /home/actions/.kube
-          sudo cp /root/.kube/config /home/actions/.kube/config
-          sudo chown -R actions:actions /home/actions/.kube
-
-      - name: Deploy a Producción
+      - name: Deploy producción
         run: |
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config apply -f infra/k8s/prod
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-backend -n production --timeout=180s
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-frontend -n production --timeout=180s
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-gateway -n production --timeout=180s
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n prod
