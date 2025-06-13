@@ -37,26 +37,38 @@ jobs:
           flake8 backend/ api-gateway/ frontend/
 
   build-images:
-    runs-on: [self-hosted, Linux, X64]
-    needs: [lint-dockerfiles, lint-python]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Docker login
-        uses: docker/login-action@v2
-        with:
+     runs-on: [self-hosted, Linux, X64]
+     needs: [lint-dockerfiles, lint-python]
+     steps:
+       - uses: actions/checkout@v4
+
+       - name: Login a Docker Hub
+         uses: docker/login-action@v2
+         with:
+          registry: docker.io
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-      - name: Build & push images
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false  # Multibuild deshabilitado, luego se divide
-      - name: Push API Gateway
-        run: docker build -t ${{ secrets.DOCKERHUB_USER }}/app_supervision:gateway-dev ./api-gateway && docker push ${{ secrets.DOCKERHUB_USER }}/app_supervision:gateway-dev
-      - name: Push Backend
-        run: docker build -t ${{ secrets.DOCKERHUB_USER }}/app_supervision:backend-dev ./backend && docker push ${{ secrets.DOCKERHUB_USER }}/app_supervision:backend-dev
-      - name: Push Frontend
-        run: docker build -t ${{ secrets.DOCKERHUB_USER }}/app_supervision:frontend-dev ./frontend && docker push ${{ secrets.DOCKERHUB_USER }}/app_supervision:frontend-dev
+
+       - name: Build & Push API Gateway
+         uses: docker/build-push-action@v5
+         with:
+          context: ./api-gateway
+          push: true
+          tags: docker.io/angelo3211agomarsino123699/app_supervision:gateway-dev
+
+       - name: Build & Push Backend
+         uses: docker/build-push-action@v5
+         with:
+          context: ./backend
+          push: true
+          tags: docker.io/angelo3211agomarsino123699/app_supervision:backend-dev
+
+       - name: Build & Push Frontend
+         uses: docker/build-push-action@v5
+         with:
+          context: ./frontend
+          push: true
+          tags: docker.io/angelo3211agomarsino123699/app_supervision:frontend-dev
 
   deploy-to-k8s:
     runs-on: [self-hosted, Linux, X64]
