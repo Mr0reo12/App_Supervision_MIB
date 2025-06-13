@@ -57,7 +57,7 @@ jobs:
 
   build-images:
      runs-on: [self-hosted, Linux, X64]
-     needs: [lint-dockerfiles, lint-python]
+     needs: [lint-dockerfiles, lint-python, tests]
      steps:
        - uses: actions/checkout@v4
 
@@ -110,7 +110,7 @@ jobs:
 
   security-scan:
     runs-on: [self-hosted, Linux, X64]
-    needs: tests
+    needs: build-images
     steps:
       - uses: actions/checkout@v4
       - name: Install Trivy
@@ -123,7 +123,6 @@ jobs:
           trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:backend-dev
           trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:gateway-dev
           trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:frontend-dev
-
  
   deploy-prod:
     runs-on: [self-hosted, Linux, X64]
