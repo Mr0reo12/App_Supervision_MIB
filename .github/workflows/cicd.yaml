@@ -94,7 +94,7 @@ jobs:
           push: true
           tags: docker.io/angelo321lagomarsino123699/app_supervision:frontend-dev
 
-  deploy-to-k8s:
+  deploy-to-dev:
     runs-on: [self-hosted, Linux, X64]
     needs: build-images
     steps:
@@ -112,24 +112,27 @@ jobs:
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-gateway -n dev
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev
 
-
   security-scan:
-    runs-on: [self-hosted, Linux, X64]
-    needs: build-images
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Trivy
-        run: |
-          sudo apt-get update && sudo apt-get install -y wget
-          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.1_Linux-64bit.deb
-          sudo dpkg -i trivy_0.50.1_Linux-64bit.deb
-      - name: Security Scan
-        run: |
-          trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:backend-dev
-          trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:gateway-dev
-          trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:frontend-dev
+   runs-on: [self-hosted, Linux, X64]
+   needs: build-images
+   steps:
+    - uses: actions/checkout@v4
+    - name: Install Trivy
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget -qO- https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo tee /etc/apt/trusted.gpg.d/trivy.gpg
+        echo deb https://aquasecurity.github.io/trivy-repo/deb stable main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install -y trivy
+
+    - name: Security Scan
+      run: |
+        trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:backend-dev
+        trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:gateway-dev
+        trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:frontend-dev
  
-  deploy-prod:
+  deploy-to-prod:
     runs-on: [self-hosted, Linux, X64]
     needs: security-scan
     steps:
