@@ -52,14 +52,13 @@ jobs:
           pip install -r api-gateway/requirements.txt || true
       - name: Run Unit Tests
         run: |
-          pytest --import-mode=importlib -p no:warnings \ 
-                 --pythonpath=(pwd) \
-                 tests/unit
+          export PYTHONPATH=$(pwd)
+          pytest --import-mode=importlib tests/unit \
+
       - name: Run Integration Tests
         run: |
-          pytest --import-mode=importlib -p no:warnings \
-                 --pythonpath=$(pwd) \
-                 tests/integration
+          export PYTHONPATH=$(pwd)
+          pytest --import-mode=importlib tests/integration 
 
   build-images:
      runs-on: [self-hosted, Linux, X64]
