@@ -52,11 +52,11 @@ jobs:
           pip install -r api-gateway/requirements.txt || true
       - name: Run Unit Tests
         run: |
-          export PYTHONPATH=$(pwd)/backend
+          export PYTHONPATH=$(pwd)
           pytest --import-mode=importlib tests/unit
       - name: Run Integration Tests
         run: |
-          export PYTHONPATH=$(pwd)/backend
+          export PYTHONPATH=$(pwd)
           pytest --import-mode=importlib tests/integration
 
   build-images:
