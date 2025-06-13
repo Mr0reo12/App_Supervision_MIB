@@ -36,6 +36,25 @@ jobs:
           pip install flake8
           flake8 backend/ api-gateway/ frontend/
 
+  tests:
+    runs-on: [self-hosted, Linux, X64]
+    needs: deploy-to-k8s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Instalar dependencias
+        run: |
+          pip install pytest
+          pip install -r backend/requirements.txt || true
+          pip install -r frontend/requirements.txt || true
+          pip install -r api-gateway/requirements.txt || true
+      - name: Run Unit Tests
+        run: pytest tests/unit
+      - name: Run Integration Tests
+        run: pytest tests/integration
+
   build-images:
      runs-on: [self-hosted, Linux, X64]
      needs: [lint-dockerfiles, lint-python]
@@ -54,21 +73,21 @@ jobs:
          with:
           context: ./api-gateway
           push: true
-          tags: docker.io/angelo3211agomarsino123699/app_supervision:gateway-dev
+          tags: docker.io/angelo321lagomarsino123699/app_supervision:gateway-dev
 
        - name: Build & Push Backend
          uses: docker/build-push-action@v5
          with:
           context: ./backend
           push: true
-          tags: docker.io/angelo3211agomarsino123699/app_supervision:backend-dev
+          tags: docker.io/angelo321lagomarsino123699/app_supervision:backend-dev
 
        - name: Build & Push Frontend
          uses: docker/build-push-action@v5
          with:
           context: ./frontend
           push: true
-          tags: docker.io/angelo3211agomarsino123699/app_supervision:frontend-dev
+          tags: docker.io/angelo321lagomarsino123699/app_supervision:frontend-dev
 
   deploy-to-k8s:
     runs-on: [self-hosted, Linux, X64]
@@ -88,25 +107,6 @@ jobs:
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-gateway -n dev
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev
 
-
-  tests:
-    runs-on: [self-hosted, Linux, X64]
-    needs: deploy-to-k8s
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Instalar dependencias
-        run: |
-          pip install pytest
-          pip install -r backend/requirements.txt || true
-          pip install -r frontend/requirements.txt || true
-          pip install -r api-gateway/requirements.txt || true
-      - name: Run Unit Tests
-        run: pytest tests/unit
-      - name: Run Integration Tests
-        run: pytest tests/integration
 
   security-scan:
     runs-on: [self-hosted, Linux, X64]
