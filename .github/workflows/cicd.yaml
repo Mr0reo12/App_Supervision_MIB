@@ -38,7 +38,7 @@ jobs:
 
   tests:
     runs-on: [self-hosted, Linux, X64]
-    needs: deploy-to-k8s
+    needs: lint-python
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
