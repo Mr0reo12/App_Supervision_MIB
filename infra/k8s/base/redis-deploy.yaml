@@ -16,6 +16,8 @@ spec:
       labels:
         app: redis
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: vmangelo2   # <-- Usa el nombre exacto de tu nodo master
       containers:
         - name: redis
           image: redis:7.2

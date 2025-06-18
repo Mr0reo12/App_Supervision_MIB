@@ -25,7 +25,7 @@ spec:
       containers:
         - name: frontend
           image: angelo321lagomarsino123699/app_supervision:frontend-dev
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5002
           env:

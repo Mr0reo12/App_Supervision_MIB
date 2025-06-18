@@ -1,0 +1,11 @@
+resources:
+  - backend-configmap.yaml
+  - backend-deploy.yaml
+  - backend-svc.yaml
+  - frontend-deploy.yaml
+  - frontend-svc.yaml
+  - gateway-deploy.yaml
+  - gateway-svc.yaml
+  - ingress-traefik.yaml
+  - redis-deploy.yaml
+  - redis-svc.yaml

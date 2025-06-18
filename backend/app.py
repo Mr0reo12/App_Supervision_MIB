@@ -15,6 +15,8 @@ import httpx
 import redis
 from fastapi import FastAPI, HTTPException, Query
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
+
+
 from dotenv import load_dotenv
 
 load_dotenv()

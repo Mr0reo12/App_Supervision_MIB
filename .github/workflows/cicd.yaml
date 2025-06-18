@@ -53,46 +53,42 @@ jobs:
       - name: Run Unit Tests
         run: |
           export PYTHONPATH=$(pwd)
-          pytest --import-mode=importlib tests/unit \
+          pytest --import-mode=importlib tests/unit
 
       - name: Run Integration Tests
         run: |
           export PYTHONPATH=$(pwd)
-          pytest --import-mode=importlib tests/integration 
+          pytest --import-mode=importlib tests/integration
 
   build-images:
-     runs-on: [self-hosted, Linux, X64]
-     needs: [lint-dockerfiles, lint-python, tests]
-     steps:
-       - uses: actions/checkout@v4
-
-       - name: Login a Docker Hub
-         uses: docker/login-action@v2
-         with:
+    runs-on: [self-hosted, Linux, X64]
+    needs: [lint-dockerfiles, lint-python, tests]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login a Docker Hub
+        uses: docker/login-action@v2
+        with:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-       - name: Build & Push API Gateway
-         uses: docker/build-push-action@v5
-         with:
+      - name: Build & Push API Gateway
+        uses: docker/build-push-action@v5
+        with:
           context: ./api-gateway
           push: true
-          tags: docker.io/angelo321lagomarsino123699/app_supervision:gateway-dev
-
-       - name: Build & Push Backend
-         uses: docker/build-push-action@v5
-         with:
+          tags: docker.io/${{ secrets.DOCKERHUB_USER }}/app_supervision:gateway-dev
+      - name: Build & Push Backend
+        uses: docker/build-push-action@v5
+        with:
           context: ./backend
           push: true
-          tags: docker.io/angelo321lagomarsino123699/app_supervision:backend-dev
-
-       - name: Build & Push Frontend
-         uses: docker/build-push-action@v5
-         with:
+          tags: docker.io/${{ secrets.DOCKERHUB_USER }}/app_supervision:backend-dev
+      - name: Build & Push Frontend
+        uses: docker/build-push-action@v5
+        with:
           context: ./frontend
           push: true
-          tags: docker.io/angelo321lagomarsino123699/app_supervision:frontend-dev
+          tags: docker.io/${{ secrets.DOCKERHUB_USER }}/app_supervision:frontend-dev
 
   deploy-to-dev:
     runs-on: [self-hosted, Linux, X64]
@@ -104,36 +100,40 @@ jobs:
           sudo mkdir -p /home/actions/.kube
           sudo cp /root/.kube/config /home/actions/.kube/config
           sudo chown -R actions:actions /home/actions/.kube
-      - name: Deploy Dev
+      - name: Deploy to Dev with Kustomize
         run: |
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config apply -f infra/k8s/dev
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config apply -k infra/k8s/overlays/dev
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-backend -n dev
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-frontend -n dev
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config rollout status deployment/app-supervision-gateway -n dev
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n dev
 
   security-scan:
-   runs-on: [self-hosted, Linux, X64]
-   needs: build-images
-   steps:
-    - uses: actions/checkout@v4
-    - name: Install Trivy
-      run: |
-       curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.18.3
-       trivy --version
+    runs-on: [self-hosted, Linux, X64]
+    needs: build-images
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.18.3
+          trivy --version
+      - name: Security Scan
+        run: |
+          trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:backend-dev
+          trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:gateway-dev
+          trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:frontend-dev
 
-    - name: Security Scan
-      run: |
-        trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:backend-dev
-        trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:gateway-dev
-        trivy image ${{ secrets.DOCKERHUB_USER }}/app_supervision:frontend-dev
- 
   deploy-to-prod:
     runs-on: [self-hosted, Linux, X64]
     needs: security-scan
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy producción
+      - name: Setup kubeconfig
         run: |
-          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config apply -f infra/k8s/prod
+          sudo mkdir -p /home/actions/.kube
+          sudo cp /root/.kube/config /home/actions/.kube/config
+          sudo chown -R actions:actions /home/actions/.kube
+      - name: Deploy to Prod with Kustomize (allowed to fail)
+        run: |
+          sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config apply -k infra/k8s/overlays/prod
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n prod

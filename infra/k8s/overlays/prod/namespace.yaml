@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata: 
+  name: prod
+  labels:
+    name: prod
+    environment: production
+    team: infra
+    owner: infra-team
