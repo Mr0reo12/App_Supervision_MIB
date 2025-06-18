@@ -129,11 +129,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup kubeconfig
+        continue-on-error: true
         run: |
           sudo mkdir -p /home/actions/.kube
           sudo cp /root/.kube/config /home/actions/.kube/config
           sudo chown -R actions:actions /home/actions/.kube
       - name: Deploy to Prod with Kustomize (allowed to fail)
+        continue-on-error: true
         run: |
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config apply -k infra/k8s/overlays/prod
           sudo -u actions kubectl --kubeconfig=/home/actions/.kube/config get pods -n prod
